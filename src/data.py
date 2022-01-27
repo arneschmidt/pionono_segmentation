@@ -5,11 +5,12 @@ import cv2
 from torch.utils import data
 
 import albumentations as albu
-import src.utils.globals.config as config
+import src.utils.globals as globals
 from segmentation_models_pytorch.encoders import get_preprocessing_fn
 
 
 def get_training_augmentation():
+
     train_transform = [
 
         albu.HorizontalFlip(p=0.5),
@@ -134,6 +135,7 @@ class CustomDataset(torch.utils.data.Dataset):
 
 
 def get_data_supervised():
+    config = globals.config
     batch_size = config['model']['batch_size']
 
     train_image_folder = os.path.join(config['data']['path'], config['data']['train']['images'])
@@ -143,11 +145,14 @@ def get_data_supervised():
     test_image_folder = os.path.join(config['data']['path'], config['data']['test']['images'])
     test_label_folder = os.path.join(config['data']['path'], config['data']['test']['masks'])
 
-    preprocessing = get_preprocessing_fn(config['model']['encoder'], pretrained=config['model']['weights'])
+    preprocessing_fn = get_preprocessing_fn(config['model']['encoder'], pretrained=config['model']['weights'])
 
-    train_dataset = CustomDataset(train_image_folder, train_label_folder, augmentation=get_training_augmentation(), preprocessing = preprocessing)
-    validate_dataset = CustomDataset(val_image_folder, val_label_folder, preprocessing = preprocessing)
-    test_dataset = CustomDataset(test_image_folder, test_label_folder, preprocessing = preprocessing)
+    train_dataset = CustomDataset(train_image_folder, train_label_folder, augmentation=get_training_augmentation(),
+                                  preprocessing = get_preprocessing(preprocessing_fn))
+    validate_dataset = CustomDataset(val_image_folder, val_label_folder,
+                                     preprocessing = get_preprocessing(preprocessing_fn))
+    test_dataset = CustomDataset(test_image_folder, test_label_folder,
+                                 preprocessing = get_preprocessing(preprocessing_fn))
 
     trainloader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8,
                                   drop_last=True)
@@ -157,4 +162,4 @@ def get_data_supervised():
                                  num_workers=batch_size,
                                  drop_last=False)  # batch_size to 1 for the visualizing images
 
-    return trainloader, validateloader, testloader, len(train_dataset)
+    return trainloader, validateloader, testloader

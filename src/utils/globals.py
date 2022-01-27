@@ -17,7 +17,7 @@ def config_update(orig_dict, new_dict):
     return orig_dict
 
 def init_global_config(args):
-    # global config
+    global config
     with open(args.default_config) as file:
         config = yaml.full_load(file)
     with open(config["data"]["dataset_config"]) as file:
@@ -32,7 +32,8 @@ def init_global_config(args):
         config = config_update(config, exp_config)
         config['logging']['experiment_folder'] = args.experiment_folder
     else:
-        warnings.warn("No experiment folder was given. Created ./output folder to store experiment results.")
+        warnings.warn("No experiment folder was given. Use ./output folder to store experiment results.")
         config['logging'] = {}
         config['logging']['experiment_folder'] = './output'
+
 

@@ -1,0 +1,10 @@
+data:
+  dataset_config: dummy_experiment/dummy_dataset_config.yaml
+
+model:
+  batch_size: 2
+  epochs: 50
+  encoder: resnet34
+  weights: imagenet
+  activation: None
+

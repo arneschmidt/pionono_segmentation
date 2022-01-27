@@ -1,6 +1,6 @@
 import torch
 
-from src.utils.globals import config
+import src.utils.globals as globals
 from src.utils.saving import save_model, save_results, save_test_image
 from src.utils.model_architecture import create_model
 from src.utils.test_helpers import segmentation_scores
@@ -18,6 +18,7 @@ class SegmentationModel():
 
 
     def train(self, trainloader, validateloader):
+        config = globals.config
         model = self.model
         device = self.device
         optimizer = torch.optim.Adam([
@@ -77,6 +78,7 @@ class SegmentationModel():
                 print('Decrease decoder learning rate to 1e-5!')
 
     def evaluate(self, evaluatedata):
+        config = globals.config
         class_no = config['data']['class_no']
         model = self.model
         device = self.device
@@ -107,6 +109,7 @@ class SegmentationModel():
             return test_dice / (j + 1), test_macro_dice / (j + 1), test_micro_dice / (j + 1)
 
     def test(self, testdata):
+        config = globals.config
         class_no = config['data']['class_no']
         model = self.model
         device = self.device
