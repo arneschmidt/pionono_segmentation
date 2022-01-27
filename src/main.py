@@ -22,7 +22,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Cancer Classification")
     parser.add_argument("--default_config", "-dc", type=str, default="./config.yaml",
                         help="Config path (yaml file expected) to default config.")
-    parser.add_argument("--experiment_folder", "-ec", type=str, default="None",
+    parser.add_argument("--experiment_folder", "-ef", type=str, default="None",
                         help="Config path to experiment folder. Parameters will override defaults. Optional.")
     args = parser.parse_args()
     init_global_config(args)
