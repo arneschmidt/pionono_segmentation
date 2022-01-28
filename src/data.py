@@ -145,7 +145,9 @@ def get_data_supervised():
     test_image_folder = os.path.join(config['data']['path'], config['data']['test']['images'])
     test_label_folder = os.path.join(config['data']['path'], config['data']['test']['masks'])
 
-    preprocessing_fn = get_preprocessing_fn(config['model']['encoder'], pretrained=config['model']['weights'])
+    encoder_name = config['model']['encoder']['backbone']
+    encoder_weights = config['model']['encoder']['weights']
+    preprocessing_fn = get_preprocessing_fn(encoder_name, pretrained=encoder_weights)
 
     train_dataset = CustomDataset(train_image_folder, train_label_folder, augmentation=get_training_augmentation(),
                                   preprocessing = get_preprocessing(preprocessing_fn))

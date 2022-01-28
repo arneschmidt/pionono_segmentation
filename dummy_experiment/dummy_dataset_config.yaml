@@ -11,3 +11,4 @@ data:
   test:
     images: patches
     masks: masks
+  visualize_test_images: all #['core_A12F_AO_x_ini_0_y_ini_0.png', 'core_A12F_AO_x_ini_0_y_ini_358.png'] # set to 'all' if all images should be printed

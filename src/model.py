@@ -21,15 +21,24 @@ class SegmentationModel():
         config = globals.config
         model = self.model
         device = self.device
-        optimizer = torch.optim.Adam([
-            dict(params=model.parameters(), lr=0.0001),
-        ])
-
         max_score = 0
         c_weights = [44, 0.4756, 0.5844, 1.5684, 3.1598, 4.7606]
         class_weights = torch.FloatTensor(c_weights).cuda()
+
         class_no = config['data']['class_no']
         epochs = config['model']['epochs']
+        learning_rate = config['model']['learning_rate']
+
+        if config['model']['optimizer'] == 'adam':
+            optimizer = torch.optim.Adam([
+                dict(params=model.parameters(), lr=learning_rate),
+            ])
+        elif config['model']['optimizer'] == 'sgd_mom':
+            optimizer = torch.optim.SGD([
+                dict(params=model.parameters(), lr=learning_rate, momentum=0.9, nesterov=True),
+            ])
+        else:
+            raise Exception('Choose valid optimizer!')
 
 
         for i in range(0, epochs):
@@ -73,9 +82,9 @@ class SegmentationModel():
             if max_score < validate_macro_dice:
                 save_model(model)
 
-            if i == 9:
-                optimizer.param_groups[0]['lr'] = 1e-5
-                print('Decrease decoder learning rate to 1e-5!')
+            if i > config['model']['lr_decay_after_epoch']:
+                for g in optimizer.param_groups:
+                    g['lr'] = 1 / (g['lr'] + config['model']['lr_decay_param'])
 
     def evaluate(self, evaluatedata):
         config = globals.config
@@ -139,7 +148,9 @@ class SegmentationModel():
 
                 test_label = test_label.cpu().detach().numpy()
                 test_preds = test_preds.cpu().detach().numpy()
-                save_test_image(test_preds, test_label, test_name)
+                for image_name in test_name:
+                    if image_name in config['data']['visualize_test_images'] or config['data']['visualize_test_images'] == 'all':
+                        save_test_image(test_preds, test_label, test_name)
 
             n = len(testdata)
             results = {
