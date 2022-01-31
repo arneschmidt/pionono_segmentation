@@ -1,5 +1,6 @@
 import torch
 import mlflow
+import warnings
 import numpy as np
 import src.utils.globals as globals
 from src.utils.saving import save_model, save_results, save_test_images
@@ -15,9 +16,8 @@ class SegmentationModel():
             print('Running on GPU')
             self.device = torch.device('cuda')
         else:
-            print('Running on CPU')
+            warnings.warn("Running on CPU because no GPU was found!")
             self.device = torch.device('cpu')
-
 
     def train(self, trainloader, validateloader):
         config = globals.config
@@ -41,7 +41,6 @@ class SegmentationModel():
             ])
         else:
             raise Exception('Choose valid optimizer!')
-
 
         for i in range(0, epochs):
 
@@ -97,44 +96,37 @@ class SegmentationModel():
         device = self.device
         model.eval()
 
-        with torch.no_grad():
-            test_dice_sum = np.zeros(shape=class_no)
-            test_macro_dice_sum = 0
-            test_micro_dice_sum = 0
+        metrics_names = ['macro_dice', 'micro_dice', 'miou', 'accuracy']
+        for class_id in range(class_no):
+            metrics_names.append('dice_class_' + str(class_id))
+        results_sum = {}
+        for metric in metrics_names:
+            results_sum[metric] = 0.0
 
+        with torch.no_grad():
             for j, (test_img, test_label, test_name) in enumerate(evaluatedata):
 
                 test_img = test_img.to(device=device, dtype=torch.float32)
                 test_label = test_label.to(device=device, dtype=torch.float32)
-                _, test_label = torch.max(test_label[:, 0:class_no], dim=1)
+                _, test_label = torch.max(test_label, dim=1)
 
                 test_pred = model(test_img)
                 _, test_pred = torch.max(test_pred[:, 0:class_no], dim=1)
 
-
                 test_label = test_label.cpu().detach().numpy()
                 test_pred = test_pred.cpu().detach().numpy()
 
-                mean_dice, mean_macro_dice, mean_micro_dice = segmentation_scores(test_label,
-                                                                                  test_pred,
-                                                                                  class_no)
-                test_dice_sum += mean_dice
-                test_macro_dice_sum += mean_macro_dice
-                test_micro_dice_sum += mean_micro_dice
+                results = segmentation_scores(test_label, test_pred, metrics_names)
+                for metric in metrics_names:
+                    results_sum[metric] = results_sum[metric] + results[metric]
 
                 if mode != 'train':
                     for image_name in test_name:
                         if image_name in config['data']['visualize_images'][mode] or config['data']['visualize_images'][mode] == 'all':
                             save_test_images(test_pred, test_label, test_name, mode)
 
-            n = len(evaluatedata)
-            results = {
-                'macro_dice': test_macro_dice_sum / n,
-                'micro_dice': test_micro_dice_sum / n,
-            }
-
-            for i in range(test_dice_sum.size):
-                results['dice_class_' + str(i)] = test_dice_sum[i]/n
+            for metric in metrics_names:
+                results_sum[metric] = results_sum[metric] / len(evaluatedata)
 
             print('RESULTS for ' + mode)
             print(results)

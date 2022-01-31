@@ -10,46 +10,25 @@ from segmentation_models_pytorch.encoders import get_preprocessing_fn
 
 
 def get_training_augmentation():
+    aug_config = globals.config['data']['augmentation']
+    if aug_config['use_augmentation']:
+        train_transform = [
+            albu.HorizontalFlip(p=0.5),
+            albu.VerticalFlip(p=0.5),
+            albu.RandomRotate90(p=0.5),
 
-    train_transform = [
-
-        albu.HorizontalFlip(p=0.5),
-
-        albu.ShiftScaleRotate(scale_limit=0.5, rotate_limit=0, shift_limit=0.1, p=1, border_mode=0),
-
-        albu.PadIfNeeded(min_height=320, min_width=320, always_apply=True, border_mode=0),
-        albu.RandomCrop(height=320, width=320, always_apply=True),
-
-        albu.IAAAdditiveGaussianNoise(p=0.2),
-        albu.IAAPerspective(p=0.5),
-
-        albu.OneOf(
-            [
-                albu.CLAHE(p=1),
-                albu.RandomBrightness(p=1),
-                albu.RandomGamma(p=1),
-            ],
-            p=0.9,
-        ),
-
-        albu.OneOf(
-            [
-                albu.IAASharpen(p=1),
-                albu.Blur(blur_limit=3, p=1),
-                albu.MotionBlur(blur_limit=3, p=1),
-            ],
-            p=0.9,
-        ),
-
-        albu.OneOf(
-            [
-                albu.RandomContrast(p=1),
-                albu.HueSaturationValue(p=1),
-            ],
-            p=0.9,
-        ),
-    ]
-    return albu.Compose(train_transform)
+            albu.Blur(blur_limit=aug_config['gaussian_blur_kernel'], p=0.5),
+            albu.RandomBrightnessContrast(brightness_limit=aug_config['brightness_limit'],
+                                          contrast_limit=aug_config['contrast_limit'],
+                                          p=0.5),
+            albu.HueSaturationValue(hue_shift_limit=aug_config['hue_shift_limit'],
+                                    sat_shift_limit=aug_config['sat_shift_limit'],
+                                    p=0.5)
+        ]
+        composed_transform = albu.Compose(train_transform)
+    else:
+        composed_transform = None
+    return composed_transform
 
 
 def get_validation_augmentation():
@@ -103,10 +82,7 @@ class CustomDataset(torch.utils.data.Dataset):
         self.images_fps = [os.path.join(images_dir, image_id) for image_id in self.ids]
         self.masks_fps = [os.path.join(masks_dir, image_id) for image_id in self.ids]
         self.class_no = globals.config['data']['class_no']
-        self.class_values = list(range(self.class_no))
-        if globals.config['data']['ignore_last_class']:
-            self.class_values.append(self.class_no)
-
+        self.class_values = self.set_class_values(self.class_no)
         self.augmentation = augmentation
         self.preprocessing = preprocessing
 
@@ -144,6 +120,13 @@ class CustomDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.ids)
+
+    def set_class_values(self, class_no):
+        if globals.config['data']['ignore_last_class']:
+            class_values = list(range(class_no + 1))
+        else:
+            class_values = list(range(class_no))
+        return class_values
 
 
 def get_data_supervised():

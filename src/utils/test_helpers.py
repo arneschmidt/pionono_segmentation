@@ -1,39 +1,58 @@
-import torch
 import numpy as np
+import src.utils.globals as globals
 
+from sklearn.metrics import accuracy_score, jaccard_score
 
-def segmentation_scores(label_trues, label_preds, n_class):
+def dice_coef_binary(y_true, y_pred):
+    intersection = np.sum(y_true * y_pred)
+    smooth = 0.0001
+    return (2. * intersection + smooth) / (np.sum(y_true) + np.sum(y_pred) + smooth)
+
+def dice_coef_multilabel(y_true, y_pred):
+    class_no = globals.config['data']['class_no']
+    dice_per_class = []
+    for index in range(class_no):
+        dice_per_class.append(dice_coef_binary(y_true == index, y_pred == index))
+
+    return np.array(dice_per_class)
+
+def segmentation_scores(label_trues, label_preds, metric_names):
     '''
     :param label_trues:
     :param label_preds:
     :param n_class:
     :return:
     '''
+    results = {}
+    class_no = globals.config['data']['class_no']
+    ignore_last_class = globals.config['data']['ignore_last_class']
+
     assert len(label_trues) == len(label_preds)
 
-    label_preds = label_preds[label_trues!=n_class]
-    label_trues = label_trues[label_trues!=n_class]
+    label_preds = np.asarray(label_preds, dtype='int8').copy().flatten()
+    label_trues = np.asarray(label_trues, dtype='int8').copy().flatten()
 
-    label_preds = np.asarray(label_preds, dtype='int8').copy()
-    label_trues = np.asarray(label_trues, dtype='int8').copy()
+    if ignore_last_class:
+        label_preds = label_preds[label_trues!=class_no]
+        label_trues = label_trues[label_trues!=class_no]
 
-    ignore_class = np.ones_like(label_preds) * n_class
-    label_preds = np.where(label_trues==n_class, ignore_class, label_preds)
-    intersection = np.where(label_preds == label_trues, label_preds, ignore_class)
+    dice_per_class = dice_coef_multilabel(label_trues, label_preds)
 
-    (area_intersection, _) = np.histogram(intersection, bins=n_class, range=(0, n_class))
-    (area_pred, _) = np.histogram(label_preds, bins=n_class, range=(0, n_class))
-    (area_lab, _) = np.histogram(label_trues, bins=n_class, range=(0, n_class))
-
-    area_sum = area_pred + area_lab
-
-    dice = ((2 * area_intersection + 1e-6) / (area_sum + 1e-6))
-    macro_dice = dice.mean()
+    results['macro_dice'] = dice_per_class.mean()
 
     intersection = (label_preds == label_trues).sum(axis=None)
     sum_ = 2 * np.prod(label_preds.shape)
-    micro_dice = ((2 * intersection + 1e-6) / (sum_ + 1e-6))
+    results['micro_dice'] = ((2 * intersection + 1e-6) / (sum_ + 1e-6))
 
-    return dice, macro_dice, micro_dice
+    for class_id in range(class_no):
+        results['dice_class_' + str(class_id)] = dice_per_class[class_id]
+
+    results['accuracy'] = accuracy_score(label_trues, label_preds)
+    results['miou'] = jaccard_score(label_trues, label_preds, average="macro") # same as IoU!
+
+    for metric in metric_names:
+        assert metric in results.keys()
+
+    return results
 
 
