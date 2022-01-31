@@ -3,6 +3,7 @@ import imageio
 import errno
 import csv
 import torch
+import mlflow
 import numpy as np
 
 import src.utils.globals as globals
@@ -15,13 +16,13 @@ def save_model(model):
     torch.save(model, out_path)
     print('Best Model saved!')
 
-def save_test_image(test_preds: np.array, test_labels: np.array, test_name: np.array):
-    visual_dir = 'qualitative_results'
+def save_test_images(test_preds: np.array, test_labels: np.array, test_name: np.array, mode: str):
+    visual_dir = 'qualitative_results/' + mode
     dir = os.path.join(globals.config['logging']['experiment_folder'], visual_dir)
     os.makedirs(dir, exist_ok=True)
 
     b, h, w = np.shape(test_labels)
-    test_preds = np.asarray(test_preds, dtype=np.uint8) + 1
+    test_preds = np.asarray(test_preds, dtype=np.uint8)
     test_labels = np.asarray(test_labels, dtype=np.uint8)
 
     for i, test_pred in enumerate(test_preds):
@@ -33,35 +34,21 @@ def save_test_image(test_preds: np.array, test_labels: np.array, test_name: np.a
         test_label_rgb = convert_classes_to_rgb(test_label, h, w)
         out_path = os.path.join(dir, 'gt_' + test_name[i])
         imageio.imsave(out_path, test_label_rgb)
+    mlflow.log_artifacts(dir)
 
 def convert_classes_to_rgb(seg_classes, h, w):
 
-    seg_rgb = 2 * np.zeros((h, w, 3), dtype=np.uint8)
+    seg_rgb = np.zeros((h, w, 3), dtype=np.uint8)
+    class_no = globals.config['data']['class_no']
+    if globals.config['data']['ignore_last_class']:
+        class_no = class_no - 1
 
-    # multi class for breast cancer
-    seg_rgb[:, :, 0][seg_classes == 1] = 153
-    seg_rgb[:, :, 1][seg_classes == 1] = 0
-    seg_rgb[:, :, 2][seg_classes == 1] = 0
+    colors = [[153,0,0], [255,102,204], [0,153,51], [153,0,204], [0,179,255]]
 
-    seg_rgb[:, :, 0][seg_classes == 2] = 255
-    seg_rgb[:, :, 1][seg_classes == 2] = 102
-    seg_rgb[:, :, 2][seg_classes == 2] = 204
-
-    seg_rgb[:, :, 0][seg_classes == 3] = 0
-    seg_rgb[:, :, 1][seg_classes == 3] = 153
-    seg_rgb[:, :, 2][seg_classes == 3] = 51
-
-    seg_rgb[:, :, 0][seg_classes == 4] = 153
-    seg_rgb[:, :, 1][seg_classes == 4] = 0
-    seg_rgb[:, :, 2][seg_classes == 4] = 204
-
-    seg_rgb[:, :, 0][seg_classes == 5] = 0
-    seg_rgb[:, :, 1][seg_classes == 5] = 179
-    seg_rgb[:, :, 2][seg_classes == 5] = 255
-
-    seg_rgb[:, :, 0][seg_classes == 0] = 0
-    seg_rgb[:, :, 1][seg_classes == 0] = 0
-    seg_rgb[:, :, 2][seg_classes == 0] = 0
+    for class_id in range(class_no):
+        seg_rgb[:, :, 0][seg_classes == class_id] = colors[class_id][0]
+        seg_rgb[:, :, 1][seg_classes == class_id] = colors[class_id][1]
+        seg_rgb[:, :, 2][seg_classes == class_id] = colors[class_id][2]
 
     return seg_rgb
 

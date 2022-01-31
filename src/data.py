@@ -97,12 +97,15 @@ class CustomDataset(torch.utils.data.Dataset):
             images_dir,
             masks_dir,
             augmentation=None,
-            preprocessing=None,
+            preprocessing=None
     ):
         self.ids = os.listdir(images_dir)
         self.images_fps = [os.path.join(images_dir, image_id) for image_id in self.ids]
         self.masks_fps = [os.path.join(masks_dir, image_id) for image_id in self.ids]
-        self.class_values = list(range(6))
+        self.class_no = globals.config['data']['class_no']
+        self.class_values = list(range(self.class_no))
+        if globals.config['data']['ignore_last_class']:
+            self.class_values.append(self.class_no)
 
         self.augmentation = augmentation
         self.preprocessing = preprocessing
@@ -113,6 +116,15 @@ class CustomDataset(torch.utils.data.Dataset):
         image = cv2.imread(self.images_fps[i])
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         mask = cv2.imread(self.masks_fps[i], 0)
+
+        class_values = self.class_values.copy()
+
+        # Delete this part after classes have been changed by Miguel
+        # move th class 0 to the last dimension such that network and labels have the same indices
+        if globals.config['data']['ignore_last_class']:
+            delete_value = np.ones_like(mask) * self.class_no
+            mask = mask - 1
+            mask = np.where(mask==-1, delete_value, mask)
 
         # extract certain classes from mask (e.g. cars)
         masks = [(mask == v) for v in self.class_values]

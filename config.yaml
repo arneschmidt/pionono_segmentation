@@ -8,10 +8,13 @@ model:
   learning_rate: 0.1
   lr_decay_after_epoch: 0
   lr_decay_param: 0.1
-  backbone: unet # unet, linknet
+  backbone: linknet # unet, linknet
   encoder:
     backbone: densenet121 # densenet121, resnet34
     weights: imagenet # imagenet or None
   decoder:
     activation: softmax # softmax or None
 
+logging:
+  interval: 10
+  mlruns_folder: ./mlruns
