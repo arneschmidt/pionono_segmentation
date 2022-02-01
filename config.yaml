@@ -4,8 +4,8 @@ data:
 model:
   epochs: 50
   batch_size: 2
-  optimizer: sgd_mom # sgd_mom, adam
-  learning_rate: 0.1
+  optimizer: adam # sgd_mom, adam
+  learning_rate: 0.01
   lr_decay_after_epoch: 0
   lr_decay_param: 0.1
   backbone: linknet # unet, linknet

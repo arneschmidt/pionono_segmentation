@@ -1,9 +1,13 @@
+# TODO
+# calculate metrics for complete test set instead of single batches
+
+
 import os
 import argparse
 
 from src.data import get_data_supervised
 from src.utils.globals import init_global_config
-from src.model import SegmentationModel
+from src.model_handler import ModelHandler
 from src.utils.logging import start_logging
 
 
@@ -15,9 +19,9 @@ def main():
 
     trainloader, validateloader, testloader = get_data_supervised()
 
-    model = SegmentationModel()
-    model.train(trainloader, validateloader)
-    model.test(testloader)
+    model_handler = ModelHandler()
+    model_handler.train(trainloader, validateloader)
+    model_handler.test(testloader)
 
 
 if __name__ == "__main__":

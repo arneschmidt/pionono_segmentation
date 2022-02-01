@@ -4,14 +4,15 @@ import warnings
 import numpy as np
 import src.utils.globals as globals
 from src.utils.saving import save_model, save_results, save_test_images
-from src.utils.model_architecture import create_model
+from src.utils.model_architecture import SegmentationModel
 from src.utils.test_helpers import segmentation_scores
 from src.utils.logging import log_results
 
 
-class SegmentationModel():
+class ModelHandler():
     def __init__(self):
-        self.model = create_model()
+        self.model = SegmentationModel()
+        self.model.cuda()
         if torch.cuda.is_available():
             print('Running on GPU')
             self.device = torch.device('cuda')
