@@ -85,6 +85,7 @@ class ModelHandler():
 
             val_results = self.evaluate(validateloader, mode = 'val')
             log_results(val_results, mode = 'val', step=int((i+1)*len(trainloader)*batch_s))
+            mlflow.log_metric('finished_epochs', i+1, int((i+1)*len(trainloader)*batch_s))
 
             metric_for_saving = val_results['macro_dice']
             if max_score < metric_for_saving:
