@@ -1,0 +1,47 @@
+data:
+  dataset_name: segmentation_tnbc
+  class_no: 5
+  class_weights: [0.4756, 0.5844, 1.5684, 3.1598, 4.7606]
+  ignore_last_class: True # index of class in gt to be deleted, else 'None'
+  path: /data/BasesDeDatos/Structured_Crowdsourced_Segmentation/512/
+  train:
+    images: patches/Train
+    masks: masks/Train/expert
+  val:
+    images: patches/Val
+    masks: masks/Val/expert
+  test:
+    images: patches/Test
+    masks: masks/Test/expert
+  visualize_images:
+    train:
+      - 'core_A1P4_EW_x_ini_358_y_ini_3580.png'
+      - 'eval_A73Y_LL_x_ini_1790_y_ini_716.png'
+      - 'core_A0DA_A7_x_ini_4296_y_ini_4654.png'
+      - 'core_A3XS_A2_x_ini_5728_y_ini_3222.png'
+      - 'core_A159_E2_x_ini_5728_y_ini_2506.png'
+    val:
+      - 'core_A1JL_D8_x_ini_1074_y_ini_5012.png'
+      - 'core_A2DB_GM_x_ini_7876_y_ini_7160.png'
+      - 'core_A2DB_GM_x_ini_2864_y_ini_3580.png'
+      - 'core_A2DB_GM_x_ini_8234_y_ini_7160.png'
+      - 'core_A2DB_GM_x_ini_7876_y_ini_5370.png'
+      - 'core_A2DB_GM_x_ini_2148_y_ini_6802.png'
+      - 'core_A1JL_D8_x_ini_5370_y_ini_6086.png'
+      - 'core_A13Z_D8_x_ini_0_y_ini_2148.png'
+    test:
+      - 'core_A1EW_BH_x_ini_3580_y_ini_2864.png'
+      - 'core_A6SB_EW_x_ini_1074_y_ini_2864.png'
+      - 'core_A12F_AO_x_ini_0_y_ini_716.png'
+      - 'core_A12F_AO_x_ini_1074_y_ini_0.png'
+      - 'core_A6SB_EW_x_ini_4296_y_ini_2864.png'
+  augmentation:
+    use_augmentation: True # switch everything off and on, if True automatically flips and 90 degree rotations are used in this case
+    gaussian_blur_kernel: 5 # range 3-7
+    brightness_limit: 0.2
+    contrast_limit: 0.2
+    hue_shift_limit: 20
+    sat_shift_limit: 30
+
+
+

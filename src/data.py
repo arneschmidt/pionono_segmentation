@@ -5,7 +5,7 @@ import cv2
 from torch.utils import data
 
 import albumentations as albu
-import src.utils.globals as globals
+import utils.globals as globals
 from segmentation_models_pytorch.encoders import get_preprocessing_fn
 
 

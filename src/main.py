@@ -5,15 +5,15 @@
 import os
 import argparse
 
-from src.data import get_data_supervised
-from src.utils.globals import init_global_config
-from src.model_handler import ModelHandler
-from src.utils.logging import start_logging
+from data import get_data_supervised
+from utils.globals import init_global_config
+from model_handler import ModelHandler
+from utils.logging import start_logging
 
 
 def main():
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(0)
+    # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+    # os.environ["CUDA_VISIBLE_DEVICES"] = str(0)
 
     start_logging()
 

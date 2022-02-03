@@ -36,7 +36,7 @@ def init_global_config(args):
                 exp_config = yaml.full_load(file)
             config = config_update(config, exp_config)
         config['logging']['experiment_folder'] = args.experiment_folder
-        config['logging']['run_name'] = args.experiment_folder.split('/')[-1]
+        config['logging']['run_name'] = os.path.basename(args.experiment_folder)
     else:
         warnings.warn("No experiment folder was given. Use ./output folder to store experiment results.")
         config['logging']['experiment_folder'] = './output'

@@ -2,11 +2,11 @@ import torch
 import mlflow
 import warnings
 import numpy as np
-import src.utils.globals as globals
-from src.utils.saving import save_model, save_results, save_test_images
-from src.utils.model_architecture import SegmentationModel
-from src.utils.test_helpers import segmentation_scores
-from src.utils.logging import log_results
+import utils.globals as globals
+from utils.saving import save_model, save_results, save_test_images
+from utils.model_architecture import SegmentationModel
+from utils.test_helpers import segmentation_scores
+from utils.logging import log_results
 
 
 class ModelHandler():
@@ -31,6 +31,8 @@ class ModelHandler():
         class_no = config['data']['class_no']
         epochs = config['model']['epochs']
         learning_rate = config['model']['learning_rate']
+        batch_s = config['model']['batch_size']
+        vis_train_images = config['data']['visualize_images']['train']
 
         if config['model']['optimizer'] == 'adam':
             optimizer = torch.optim.Adam([
@@ -57,8 +59,10 @@ class ModelHandler():
 
                 # forward + backward + optimize
                 y_pred = model(images)
-                # y_pred = torch.softmax(outputs_logits, dim=1)
+
                 _, labels = torch.max(labels, dim=1)
+                _, y_pred_max = torch.max(y_pred[:, 0:class_no], dim=1)
+
                 if config['data']['ignore_last_class']:
                     ignore_index = int(config['data']['class_no']) # deleted class is always set to the last index
                 else:
@@ -67,14 +71,20 @@ class ModelHandler():
                 loss.backward()
                 optimizer.step()
 
-                if j % 10 == 0:
+                if j % int(config['logging']['interval']) == 0:
+                    train_results = self.get_results(y_pred_max, labels)
+                    log_results(train_results, mode='train', step=(i*len(trainloader)*batch_s+j))
                     print("Iter {}/{} - batch loss : {:.4f}".format(j, len(trainloader), loss))
 
-            train_results = self.evaluate(trainloader, mode = 'train')
-            val_results = self.evaluate(validateloader, mode = 'val')
+                for k in range(len(imagename)):
+                    if imagename[k] in vis_train_images:
+                        labels_save = labels[k].cpu().detach().numpy()
+                        y_pred_max_save = y_pred_max[k].cpu().detach().numpy()
+                        images_save = images[k] #.cpu().detach().numpy()
+                        save_test_images(images_save, y_pred_max_save, labels_save, imagename[k], 'train')
 
-            log_results(train_results, mode = 'train', step=i)
-            log_results(val_results, mode = 'val', step=i)
+            val_results = self.evaluate(validateloader, mode = 'val')
+            log_results(val_results, mode = 'val', step=int((i+1)*len(trainloader)*batch_s))
 
             metric_for_saving = val_results['macro_dice']
             if max_score < metric_for_saving:
@@ -83,52 +93,66 @@ class ModelHandler():
 
             if i > config['model']['lr_decay_after_epoch']:
                 for g in optimizer.param_groups:
-                    g['lr'] = 1 / (g['lr'] + config['model']['lr_decay_param'])
+                    g['lr'] = g['lr'] / (1 + config['model']['lr_decay_param'])
 
     def test(self, testloader):
         results = self.evaluate(testloader)
-        log_results(results, mode = 'val', step=None)
+        log_results(results, mode = 'test', step=None)
         save_results(results)
 
     def evaluate(self, evaluatedata, mode='test'):
         config = globals.config
         class_no = config['data']['class_no']
+        vis_images = config['data']['visualize_images'][mode]
         model = self.model
         device = self.device
         model.eval()
 
-        metrics_names = ['macro_dice', 'micro_dice', 'miou', 'accuracy']
-        for class_id in range(class_no):
-            metrics_names.append('dice_class_' + str(class_id))
-        results_sum = {}
-        for metric in metrics_names:
-            results_sum[metric] = 0.0
+        labels = []
+        preds = []
 
         with torch.no_grad():
             for j, (test_img, test_label, test_name) in enumerate(evaluatedata):
-
                 test_img = test_img.to(device=device, dtype=torch.float32)
-                test_label = test_label.to(device=device, dtype=torch.float32)
-                _, test_label = torch.max(test_label, dim=1)
-
                 test_pred = model(test_img)
                 _, test_pred = torch.max(test_pred[:, 0:class_no], dim=1)
-
+                test_pred_np = test_pred.cpu().detach().numpy()
                 test_label = test_label.cpu().detach().numpy()
-                test_pred = test_pred.cpu().detach().numpy()
+                test_label = np.argmax(test_label, axis=1)
 
-                results = segmentation_scores(test_label, test_pred, metrics_names)
-                for metric in metrics_names:
-                    results_sum[metric] = results_sum[metric] + results[metric]
+                preds.append(test_pred_np.astype(np.int8).copy().flatten())
+                labels.append(test_label.astype(np.int8).copy().flatten())
 
-                if mode != 'train':
-                    for image_name in test_name:
-                        if image_name in config['data']['visualize_images'][mode] or config['data']['visualize_images'][mode] == 'all':
-                            save_test_images(test_pred, test_label, test_name, mode)
+                for k in range(len(test_name)):
+                    if test_name[k] in vis_images or vis_images == 'all':
+                        img = test_img[k] #.cpu().detach().numpy()
+                        save_test_images(img, test_pred_np[k], test_label[k], test_name[k], mode)
 
-            for metric in metrics_names:
-                results_sum[metric] = results_sum[metric] / len(evaluatedata)
+            preds = np.concatenate(preds, axis=0, dtype=np.int8).flatten()
+            labels = np.concatenate(labels, axis=0, dtype=np.int8).flatten()
+
+            results = self.get_results(preds, labels)
 
             print('RESULTS for ' + mode)
             print(results)
             return results
+
+    def get_results(self, pred, label):
+        config = globals.config
+        class_no = config['data']['class_no']
+
+        metrics_names = ['macro_dice', 'micro_dice', 'miou', 'accuracy']
+        for class_id in range(class_no):
+            metrics_names.append('dice_class_' + str(class_id))
+
+        if torch.is_tensor(pred):
+            pred = pred.cpu().detach().numpy().copy().flatten()
+        if torch.is_tensor(label):
+            label = label.cpu().detach().numpy().copy().flatten()
+
+        results = segmentation_scores(label, pred, metrics_names)
+
+        return results
+
+
+

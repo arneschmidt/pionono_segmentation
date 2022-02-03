@@ -1,5 +1,5 @@
 import numpy as np
-import src.utils.globals as globals
+import utils.globals as globals
 
 from sklearn.metrics import accuracy_score, jaccard_score
 
@@ -29,8 +29,10 @@ def segmentation_scores(label_trues, label_preds, metric_names):
 
     assert len(label_trues) == len(label_preds)
 
-    label_preds = np.asarray(label_preds, dtype='int8').copy().flatten()
-    label_trues = np.asarray(label_trues, dtype='int8').copy().flatten()
+    # label_preds = np.asarray(label_preds, dtype='int8').copy().flatten()
+    # label_trues = np.asarray(label_trues, dtype='int8').copy().flatten()
+    label_preds = np.array(label_preds, dtype='int8')
+    label_trues = np.array(label_trues, dtype='int8')
 
     if ignore_last_class:
         label_preds = label_preds[label_trues!=class_no]

@@ -1,9 +1,9 @@
 import torch
-import src.utils.globals
+import utils.globals
 import segmentation_models_pytorch as smp
 
 def create_segmentation_backbone():
-    config = src.utils.globals.config
+    config = utils.globals.config
     class_no = config['data']['class_no']
 
     if config['model']['backbone'] == 'unet':
@@ -20,7 +20,7 @@ def create_segmentation_backbone():
             encoder_weights=config['model']['encoder']['weights'],
             # use `imagenet` pre-trained weights for encoder initialization
             in_channels=3,  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
-            classes=class_no  # model output channels (number of classes in your dataset)
+            classes=class_no # model output channels (number of classes in your dataset)
         )
     else:
         raise Exception('Choose valid model backbone!')
