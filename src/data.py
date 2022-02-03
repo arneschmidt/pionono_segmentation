@@ -97,10 +97,10 @@ class CustomDataset(torch.utils.data.Dataset):
 
         # Delete this part after classes have been changed by Miguel
         # move th class 0 to the last dimension such that network and labels have the same indices
-        if globals.config['data']['ignore_last_class']:
-            delete_value = np.ones_like(mask) * self.class_no
-            mask = mask - 1
-            mask = np.where(mask==-1, delete_value, mask)
+        # if globals.config['data']['ignore_last_class']:
+        #     delete_value = np.ones_like(mask) * self.class_no
+        #     mask = mask - 1
+        #     mask = np.where(mask==-1, delete_value, mask)
 
         # extract certain classes from mask (e.g. cars)
         masks = [(mask == v) for v in self.class_values]
