@@ -157,6 +157,6 @@ def get_data_supervised():
                                      num_workers=batch_size, drop_last=False)
     testloader = data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False,
                                  num_workers=batch_size,
-                                 drop_last=False)  # batch_size to 1 for the visualizing images
+                                 drop_last=False)
 
     return trainloader, validateloader, testloader

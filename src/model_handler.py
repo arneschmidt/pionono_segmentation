@@ -3,7 +3,7 @@ import mlflow
 import warnings
 import numpy as np
 import utils.globals as globals
-from utils.saving import save_model, save_results, save_test_images
+from utils.saving import save_model, save_results, save_test_images, save_image_color_legend
 from utils.model_architecture import SegmentationModel
 from utils.test_helpers import segmentation_scores
 from utils.logging import log_results
@@ -33,6 +33,7 @@ class ModelHandler():
         learning_rate = config['model']['learning_rate']
         batch_s = config['model']['batch_size']
         vis_train_images = config['data']['visualize_images']['train']
+        save_image_color_legend()
 
         if config['model']['optimizer'] == 'adam':
             optimizer = torch.optim.Adam([
@@ -97,6 +98,7 @@ class ModelHandler():
                     g['lr'] = g['lr'] / (1 + config['model']['lr_decay_param'])
 
     def test(self, testloader):
+        save_image_color_legend()
         results = self.evaluate(testloader)
         log_results(results, mode = 'test', step=None)
         save_results(results)
@@ -141,10 +143,11 @@ class ModelHandler():
     def get_results(self, pred, label):
         config = globals.config
         class_no = config['data']['class_no']
+        class_names = globals.config['data']['class_names']
 
         metrics_names = ['macro_dice', 'micro_dice', 'miou', 'accuracy']
         for class_id in range(class_no):
-            metrics_names.append('dice_class_' + str(class_id))
+            metrics_names.append('dice_class_' + str(class_id) + '_' + class_names[class_id])
 
         if torch.is_tensor(pred):
             pred = pred.cpu().detach().numpy().copy().flatten()

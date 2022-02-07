@@ -25,6 +25,7 @@ def segmentation_scores(label_trues, label_preds, metric_names):
     '''
     results = {}
     class_no = globals.config['data']['class_no']
+    class_names = globals.config['data']['class_names']
     ignore_last_class = globals.config['data']['ignore_last_class']
 
     assert len(label_trues) == len(label_preds)
@@ -47,7 +48,7 @@ def segmentation_scores(label_trues, label_preds, metric_names):
     results['micro_dice'] = ((2 * intersection + 1e-6) / (sum_ + 1e-6))
 
     for class_id in range(class_no):
-        results['dice_class_' + str(class_id)] = dice_per_class[class_id]
+        results['dice_class_' + str(class_id) + '_' + class_names[class_id]] = dice_per_class[class_id]
 
     results['accuracy'] = accuracy_score(label_trues, label_preds)
     results['miou'] = jaccard_score(label_trues, label_preds, average="macro") # same as IoU!
