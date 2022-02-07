@@ -58,7 +58,7 @@ def save_image_color_legend():
         ax.set_title(class_names[class_id])
         ax.axis('off')
     plt.savefig(dir + 'legend.png')
-    mlflow.log_artifacts(dir, 'qualitative_results')
+    mlflow.log_artifact(dir + 'legend.png', 'qualitative_results')
 
 
 def convert_classes_to_rgb(seg_classes, h, w):
