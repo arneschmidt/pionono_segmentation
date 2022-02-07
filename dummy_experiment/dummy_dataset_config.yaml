@@ -1,6 +1,7 @@
 data:
   dataset_name: dummy
   class_no: 5
+  class_names: ['otro', 'tumor', 'stroma', 'inflammation', 'necrosis']
   class_weights: [1,1,1,1,1] #[0.4756, 0.5844, 1.5684, 3.1598, 4.7606]
   ignore_last_class: True # index of class in gt to be deleted, else 'None'
   path: ./dummy_experiment/data/
