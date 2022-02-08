@@ -19,6 +19,7 @@ def main():
 
     trainloader, validateloader, testloader = get_data_supervised()
 
+    # load and train the model
     model_handler = ModelHandler()
     model_handler.train(trainloader, validateloader)
     model_handler.test(testloader)
