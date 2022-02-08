@@ -16,6 +16,7 @@
     1. The default config: By argument `-dc [path/to/config.yaml]`
     2. The dataset config: In the default config `data: dataset_config: [path/to/dataset_config.yaml]`
     3. The experiment config: By changing the experiment folder `-ef [path/to/directory]`. Here a file `exp_config.yaml` is expected.
+* Example: `python src/main.py -dc ../../experiments/segmentation_tnbc/config.yaml -ef ../../experiments/segmentation_tnbc/linknet`
     
     
 ## Collaboration
