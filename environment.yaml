@@ -1,4 +1,4 @@
-name: base
+name: seg_crowd_env
 channels:
   - defaults
 dependencies:
