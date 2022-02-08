@@ -17,4 +17,4 @@ model:
 
 logging:
   interval: 10
-  mlruns_folder: http://127.0.0.1:5002  #/home/arne/segmentation_crowdsourcing/mlruns # /home/arne/logging/mlruns # http://127.0.0.1:5002 #
+  mlruns_folder: /work/work_arne/mlflow_server # http://127.0.0.1:5002
