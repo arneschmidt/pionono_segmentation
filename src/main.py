@@ -17,6 +17,7 @@ def main():
 
     start_logging()
 
+    # load data
     trainloader, validateloader, testloader = get_data_supervised()
 
     # load and train the model
