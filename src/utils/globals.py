@@ -38,8 +38,10 @@ def init_global_config(args):
         config['logging']['experiment_folder'] = args.experiment_folder
         config['logging']['run_name'] = os.path.basename(args.experiment_folder)
     else:
+        out_dir = './output/'
+        os.makedirs(out_dir, exist_ok=True)
         warnings.warn("No experiment folder was given. Use ./output folder to store experiment results.")
-        config['logging']['experiment_folder'] = './output'
+        config['logging']['experiment_folder'] = out_dir
         config['logging']['run_name'] = 'default'
 
 

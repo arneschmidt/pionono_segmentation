@@ -1,8 +1,8 @@
 data:
   dataset_name: segmentation_tnbc
   class_no: 5
-  class_names: ['otro', 'tumor', 'stroma', 'inflammation', 'necrosis']
-  class_weights: [0.4756, 0.5844, 1.5684, 3.1598, 4.7606]
+  class_names: ['other', 'tumor', 'stroma', 'inflammation', 'necrosis']
+  class_weights: [4.7607, 0.4756, 0.5844, 1.5684, 3.1598]
   ignore_last_class: True # index of class in gt to be deleted, else 'None'
   path: /data/BasesDeDatos/Structured_Crowdsourced_Segmentation/512/
   train:
@@ -36,6 +36,7 @@ data:
       - 'core_A12F_AO_x_ini_0_y_ini_716.png'
       - 'core_A12F_AO_x_ini_1074_y_ini_0.png'
       - 'core_A6SB_EW_x_ini_4296_y_ini_2864.png'
+  normalization: False
   augmentation:
     use_augmentation: True # switch everything off and on, if True automatically flips and 90 degree rotations are used in this case
     gaussian_blur_kernel: 5 # range 3-7

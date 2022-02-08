@@ -2,11 +2,14 @@ import os
 import torch
 import numpy as np
 import cv2
+import functools
+
 from torch.utils import data
 
 import albumentations as albu
 import utils.globals as globals
 from segmentation_models_pytorch.encoders import get_preprocessing_fn
+from utils.preprocessing import get_preprocessing_fn_without_normalization
 
 
 def get_training_augmentation():
@@ -42,6 +45,14 @@ def get_validation_augmentation():
 def to_tensor(x, **kwargs):
     return x.transpose(2, 0, 1).astype('float32')
 
+# def my_preprocess_input(x):
+#
+#     x = x / 255.0
+#
+#     return x
+#
+# def get_my_prec():
+#     return functools.partial(my_preprocess_input)
 
 def get_preprocessing(preprocessing_fn):
     """Construct preprocessing transform
@@ -132,6 +143,7 @@ class CustomDataset(torch.utils.data.Dataset):
 def get_data_supervised():
     config = globals.config
     batch_size = config['model']['batch_size']
+    normalization = config['data']['normalization']
 
     train_image_folder = os.path.join(config['data']['path'], config['data']['train']['images'])
     train_label_folder = os.path.join(config['data']['path'], config['data']['train']['masks'])
@@ -140,23 +152,24 @@ def get_data_supervised():
     test_image_folder = os.path.join(config['data']['path'], config['data']['test']['images'])
     test_label_folder = os.path.join(config['data']['path'], config['data']['test']['masks'])
 
-    encoder_name = config['model']['encoder']['backbone']
-    encoder_weights = config['model']['encoder']['weights']
-    preprocessing_fn = get_preprocessing_fn(encoder_name, pretrained=encoder_weights)
+    if normalization:
+        encoder_name = config['model']['encoder']['backbone']
+        encoder_weights = config['model']['encoder']['weights']
+        preprocessing_fn = get_preprocessing_fn(encoder_name, pretrained=encoder_weights)
+    else:
+        preprocessing_fn = get_preprocessing_fn_without_normalization()
+
+    preprocessing = get_preprocessing(preprocessing_fn)
 
     train_dataset = CustomDataset(train_image_folder, train_label_folder, augmentation=get_training_augmentation(),
-                                  preprocessing = get_preprocessing(preprocessing_fn))
-    validate_dataset = CustomDataset(val_image_folder, val_label_folder,
-                                     preprocessing = get_preprocessing(preprocessing_fn))
-    test_dataset = CustomDataset(test_image_folder, test_label_folder,
-                                 preprocessing = get_preprocessing(preprocessing_fn))
+                                  preprocessing = preprocessing)
+    validate_dataset = CustomDataset(val_image_folder, val_label_folder, preprocessing = preprocessing)
+    test_dataset = CustomDataset(test_image_folder, test_label_folder, preprocessing = preprocessing)
 
-    trainloader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8,
-                                  drop_last=True)
-    validateloader = data.DataLoader(validate_dataset, batch_size=batch_size, shuffle=False,
-                                     num_workers=batch_size, drop_last=False)
-    testloader = data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False,
-                                 num_workers=batch_size,
+    trainloader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
+    validateloader = data.DataLoader(validate_dataset, batch_size=batch_size, shuffle=False, num_workers=batch_size,
+                                     drop_last=False)
+    testloader = data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=batch_size,
                                  drop_last=False)
 
     return trainloader, validateloader, testloader

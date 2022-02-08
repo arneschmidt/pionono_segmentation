@@ -2,15 +2,15 @@ data:
   dataset_config: dummy_experiment/dummy_dataset_config.yaml
 
 model:
-  epochs: 100
-  batch_size: 4
-  optimizer: sgd_mom # sgd_mom, adam
-  learning_rate: 0.1
-  lr_decay_after_epoch: 0
+  epochs: 10
+  batch_size: 2
+  optimizer: adam # sgd_mom, adam
+  learning_rate: 0.0001
+  lr_decay_after_epoch: 9999
   lr_decay_param: 0.1
-  backbone: linknet # unet, linknet
+  backbone: unet # unet, linknet
   encoder:
-    backbone: densenet121 # densenet121, resnet34
+    backbone: resnet34 # densenet121, resnet34
     weights: imagenet # imagenet or None
   decoder:
     activation: softmax # softmax or None

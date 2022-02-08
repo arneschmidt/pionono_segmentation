@@ -43,13 +43,14 @@ def save_test_images(test_imgs:torch.Tensor, test_preds: np.array, test_labels: 
 def save_image_color_legend():
     visual_dir = 'qualitative_results/'
     dir = os.path.join(globals.config['logging']['experiment_folder'], visual_dir)
+    os.makedirs(dir, exist_ok=True)
     class_no = globals.config['data']['class_no']
     class_names = globals.config['data']['class_names']
 
     fig = plt.figure()
 
     size = 100
-    out_img = np.zeros(shape=[size*class_no,100, 3])
+
     for class_id in range(class_no):
         # out_img[size*class_id:size*(class_id+1),:,:] = convert_classes_to_rgb(np.ones(size,size,3)*class_id, size,size)
         out_img = convert_classes_to_rgb(np.ones(shape=[size,size])*class_id, size,size)
