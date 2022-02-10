@@ -1,5 +1,5 @@
 data:
-  dataset_config: dummy_experiment/dummy_dataset_config.yaml
+  dataset_config: dummy_experiment/dummy_crowd_dataset_config.yaml
 
 model:
   epochs: 10
@@ -17,4 +17,4 @@ model:
 
 logging:
   interval: 10
-  mlruns_folder: /work/work_arne/mlflow_server # http://127.0.0.1:5002
+  mlruns_folder: /work/work_mik/mlflow_server # http://127.0.0.1:5002
