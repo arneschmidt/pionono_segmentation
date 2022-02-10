@@ -131,10 +131,92 @@ class CustomDataset(torch.utils.data.Dataset):
         return class_values
 
 
+class Crowdsourced_Dataset(torch.utils.data.Dataset):
+    """Crowdsourced_Dataset Dataset. Read images, apply augmentation and preprocessing transformations.
+    Args:
+        images_dir (str): path to images folder
+        masks_dir (str): path to segmentation masks folder
+        class_values (list): values of classes to extract from segmentation mask
+        augmentation (albumentations.Compose): data transfromation pipeline
+            (e.g. flip, scale, etc.)
+        preprocessing (albumentations.Compose): data preprocessing
+            (e.g. noralization, shape manipulation, etc.)
+    """
+    def __init__(
+            self,
+            images_dir,
+            masks_dir,
+            augmentation=None,
+            preprocessing=None
+    ):
+        self.ids = os.listdir(images_dir)
+        self.images_fps = [os.path.join(images_dir, image_id) for image_id in self.ids]
+        self.annotators = self._init_annotators(masks_dir)
+
+        print("Images: ", self.ids)
+        print("Annotators: ")
+        print(*self.annotators, sep = "\n")
+        sejfhej
+        # self.masks_fps
+        self.masks_fps = [os.path.join(masks_dir, image_id) for image_id in self.ids]
+        self.class_no = globals.config['data']['class_no']
+        self.class_values = self.set_class_values(self.class_no)
+        self.augmentation = augmentation
+        self.preprocessing = preprocessing
+
+
+    def _init_annotators(self, masks_dir):
+        annotators = os.listdir(masks_dir)
+        print("Annotator list: ", annotators)
+        annotators = [e for e in annotators if e not in ('expert', 'MV', 'STAPLE')]
+        ann_paths = [os.path.join(masks_dir, ann) for ann in annotators]
+        mask_index_list = []
+        for image_id in self.ids:
+            masks_list = [os.path.join(ann_path, image_id) if os.path.exists(os.path.join(ann_path, image_id)) else None for ann_path in ann_paths]
+            mask_index_list.append(masks_list)
+        return mask_index_list
+
+
+    def __getitem__(self, i):
+
+        # read data
+        image = cv2.imread(self.images_fps[i])
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        mask = cv2.imread(self.masks_fps[i], 0)
+
+        # extract certain classes from mask (e.g. cars)
+        masks = [(mask == v) for v in self.class_values]
+        mask = np.stack(masks, axis=-1).astype('float')
+
+        # apply augmentations
+        if self.augmentation:
+            sample = self.augmentation(image=image, mask=mask)
+            image, mask = sample['image'], sample['mask']
+
+        # apply preprocessing
+        if self.preprocessing:
+            sample = self.preprocessing(image=image, mask=mask)
+            image, mask = sample['image'], sample['mask']
+
+        return image, mask, self.ids[i]
+
+    def __len__(self):
+        return len(self.ids)
+
+    def set_class_values(self, class_no):
+        if globals.config['data']['ignore_last_class']:
+            class_values = list(range(class_no + 1))
+        else:
+            class_values = list(range(class_no))
+        return class_values
+
+
+
 def get_data_supervised():
     config = globals.config
     batch_size = config['model']['batch_size']
     normalization = config['data']['normalization']
+    crowd = config['data']['crowd']
 
     train_image_folder = os.path.join(config['data']['path'], config['data']['train']['images'])
     train_label_folder = os.path.join(config['data']['path'], config['data']['train']['masks'])
@@ -152,10 +234,17 @@ def get_data_supervised():
 
     preprocessing = get_preprocessing(preprocessing_fn)
 
-    train_dataset = CustomDataset(train_image_folder, train_label_folder, augmentation=get_training_augmentation(),
-                                  preprocessing = preprocessing)
-    validate_dataset = CustomDataset(val_image_folder, val_label_folder, preprocessing = preprocessing)
-    test_dataset = CustomDataset(test_image_folder, test_label_folder, preprocessing = preprocessing)
+    if crowd:
+        train_dataset = Crowdsourced_Dataset(train_image_folder, train_label_folder, augmentation=get_training_augmentation(),
+                                      preprocessing = preprocessing)
+        validate_dataset = Crowdsourced_Dataset(val_image_folder, val_label_folder, preprocessing = preprocessing)
+        test_dataset = Crowdsourced_Dataset(test_image_folder, test_label_folder, preprocessing = preprocessing)
+
+    else:
+        train_dataset = CustomDataset(train_image_folder, train_label_folder, augmentation=get_training_augmentation(),
+                                      preprocessing = preprocessing)
+        validate_dataset = CustomDataset(val_image_folder, val_label_folder, preprocessing = preprocessing)
+        test_dataset = CustomDataset(test_image_folder, test_label_folder, preprocessing = preprocessing)
 
     trainloader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
     validateloader = data.DataLoader(validate_dataset, batch_size=batch_size, shuffle=False, num_workers=batch_size,
