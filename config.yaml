@@ -6,7 +6,7 @@ model:
   batch_size: 2
   optimizer: adam # sgd_mom, adam
   learning_rate: 0.0001
-  lr_decay_after_epoch: 9999
+  lr_decay_after_epoch: 50
   lr_decay_param: 0.1
   backbone: unet # unet, linknet
   encoder:
