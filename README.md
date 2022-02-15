@@ -3,6 +3,7 @@
 ## Install Requirements
 * Use Miniconda/Anaconda to install the requirements with `conda env create -f environment.yml`
 * Activate the environment with `conda activate seg_crowd_env`
+* For more information see www.anaconda.com
 
 
 ## Configuration
