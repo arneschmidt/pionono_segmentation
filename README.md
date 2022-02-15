@@ -29,7 +29,12 @@ To implement something new:
     * add: `git add file_that_changed`
     * commit: `git commit -m 'small description of change'`
 5. In github create a pull request (PR), ask collaborators if new implementation looks good
-6. In github merge pull request to the main branch
+6. If the main branch has been updated, do the following:
+    * `git checkout main`
+    * `git pull`
+    * `git checkout branch_name_that_describes_new_feature`
+    * `git rebase main` 
+7. In github merge pull request to the main branch
 
 
 ## Logging with mlflow
