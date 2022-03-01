@@ -131,17 +131,16 @@ class CustomDataset(torch.utils.data.Dataset):
         return class_values
 
 
-def get_data_supervised():
+def get_data_supervised(split: str, with_masks: bool = True):
+    """
+
+    :param split: 'train', 'val' or 'test'
+    :return: dataloader for pytorch model
+    """
     config = globals.config
     batch_size = config['model']['batch_size']
     normalization = config['data']['normalization']
-
-    train_image_folder = os.path.join(config['data']['path'], config['data']['train']['images'])
-    train_label_folder = os.path.join(config['data']['path'], config['data']['train']['masks'])
-    val_image_folder = os.path.join(config['data']['path'], config['data']['val']['images'])
-    val_label_folder = os.path.join(config['data']['path'], config['data']['val']['masks'])
-    test_image_folder = os.path.join(config['data']['path'], config['data']['test']['images'])
-    test_label_folder = os.path.join(config['data']['path'], config['data']['test']['masks'])
+    augmentation = None
 
     if normalization:
         encoder_name = config['model']['encoder']['backbone']
@@ -152,15 +151,19 @@ def get_data_supervised():
 
     preprocessing = get_preprocessing(preprocessing_fn)
 
-    train_dataset = CustomDataset(train_image_folder, train_label_folder, augmentation=get_training_augmentation(),
-                                  preprocessing = preprocessing)
-    validate_dataset = CustomDataset(val_image_folder, val_label_folder, preprocessing = preprocessing)
-    test_dataset = CustomDataset(test_image_folder, test_label_folder, preprocessing = preprocessing)
+    image_folder = os.path.join(config['data']['path'], config['data'][split]['images'])
+    if with_masks:
+        label_folder = os.path.join(config['data']['path'], config['data'][split]['masks'])
+    else:
+        label_folder = image_folder # do trick: when no masks are available, use images as masks
 
-    trainloader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
-    validateloader = data.DataLoader(validate_dataset, batch_size=batch_size, shuffle=False, num_workers=batch_size,
-                                     drop_last=False)
-    testloader = data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=batch_size,
-                                 drop_last=False)
+    if split == 'train':
+        augmentation = get_training_augmentation()
 
-    return trainloader, validateloader, testloader
+    dataset = CustomDataset(image_folder, label_folder, augmentation=augmentation, preprocessing = preprocessing)
+    if split == 'train':
+        loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
+    else:
+        loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=batch_size, drop_last=False)
+
+    return loader

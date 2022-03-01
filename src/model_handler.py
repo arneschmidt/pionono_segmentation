@@ -4,6 +4,7 @@ import warnings
 import numpy as np
 import utils.globals as globals
 from utils.saving import save_model, save_results, save_test_images, save_image_color_legend
+from utils.loading import load_model
 from utils.model_architecture import SegmentationModel
 from utils.test_helpers import segmentation_scores
 from utils.logging import log_results
@@ -11,8 +12,12 @@ from utils.logging import log_results
 
 class ModelHandler():
     def __init__(self):
-        self.model = SegmentationModel()
+        if globals.config['model']['load_model'] == 'None':
+            self.model = SegmentationModel()
+        else:
+            self.model = load_model()
         self.model.cuda()
+
         if torch.cuda.is_available():
             print('Running on GPU')
             self.device = torch.device('cuda')
@@ -103,10 +108,14 @@ class ModelHandler():
         log_results(results, mode = 'test', step=None)
         save_results(results)
 
+    def predict(self, testloader):
+        save_image_color_legend()
+        self.evaluate(testloader, mode='predict')
+
     def evaluate(self, evaluatedata, mode='test'):
         config = globals.config
         class_no = config['data']['class_no']
-        vis_images = config['data']['visualize_images'][mode]
+
         model = self.model
         device = self.device
         model.eval()
@@ -114,17 +123,24 @@ class ModelHandler():
         labels = []
         preds = []
 
+        if mode == 'predict':
+            vis_images = 'all'
+        else:
+            vis_images = config['data']['visualize_images'][mode]
+
         with torch.no_grad():
             for j, (test_img, test_label, test_name) in enumerate(evaluatedata):
                 test_img = test_img.to(device=device, dtype=torch.float32)
                 test_pred = model(test_img)
                 _, test_pred = torch.max(test_pred[:, 0:class_no], dim=1)
                 test_pred_np = test_pred.cpu().detach().numpy()
-                test_label = test_label.cpu().detach().numpy()
-                test_label = np.argmax(test_label, axis=1)
 
                 preds.append(test_pred_np.astype(np.int8).copy().flatten())
-                labels.append(test_label.astype(np.int8).copy().flatten())
+
+                if mode != 'predict':
+                    test_label = test_label.cpu().detach().numpy()
+                    test_label = np.argmax(test_label, axis=1)
+                    labels.append(test_label.astype(np.int8).copy().flatten())
 
                 for k in range(len(test_name)):
                     if test_name[k] in vis_images or vis_images == 'all':
@@ -132,9 +148,12 @@ class ModelHandler():
                         save_test_images(img, test_pred_np[k], test_label[k], test_name[k], mode)
 
             preds = np.concatenate(preds, axis=0, dtype=np.int8).flatten()
-            labels = np.concatenate(labels, axis=0, dtype=np.int8).flatten()
 
-            results = self.get_results(preds, labels)
+            if mode == 'predict':
+                results = {}
+            else:
+                labels = np.concatenate(labels, axis=0, dtype=np.int8).flatten()
+                results = self.get_results(preds, labels)
 
             print('RESULTS for ' + mode)
             print(results)
@@ -157,6 +176,8 @@ class ModelHandler():
         results = segmentation_scores(label, pred, metrics_names)
 
         return results
+
+
 
 
 

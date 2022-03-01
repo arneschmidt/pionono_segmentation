@@ -2,6 +2,8 @@ data:
   dataset_config: dummy_experiment/dummy_dataset_config.yaml
 
 model:
+  mode: train # train, test, predict
+  load_model: None # path or 'None'
   epochs: 10
   batch_size: 2
   optimizer: adam # sgd_mom, adam

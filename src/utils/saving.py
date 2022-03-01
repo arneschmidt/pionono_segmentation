@@ -19,26 +19,38 @@ def save_model(model):
     print('Best Model saved!')
 
 def save_test_images(test_imgs:torch.Tensor, test_preds: np.array, test_labels: np.array, test_name: np.array, mode: str):
+    if mode != 'predict':
+        folder_name = mode
+    else:
+        folder_name = 'test'
+
     visual_dir = 'qualitative_results/' + mode
     dir = os.path.join(globals.config['logging']['experiment_folder'], visual_dir)
     os.makedirs(dir, exist_ok=True)
 
-    h, w = np.shape(test_labels)
+    h, w = np.shape(test_preds)
 
     test_preds = np.asarray(test_preds, dtype=np.uint8)
     test_labels = np.asarray(test_labels, dtype=np.uint8)
 
-    out_path = os.path.join(dir, 'img_' + test_name)
-    save_image(test_imgs, out_path)
+    out_path_img = os.path.join(dir, 'img_' + test_name)
+    save_image(test_imgs, out_path_img)
 
     test_pred_rgb = convert_classes_to_rgb(test_preds, h, w)
-    out_path = os.path.join(dir, 'pred_' + test_name)
-    imageio.imsave(out_path, test_pred_rgb)
+    out_path_pred = os.path.join(dir, 'pred_' + test_name)
+    imageio.imsave(out_path_pred, test_pred_rgb)
 
-    test_label_rgb = convert_classes_to_rgb(test_labels, h, w)
-    out_path = os.path.join(dir, 'gt_' + test_name)
-    imageio.imsave(out_path, test_label_rgb)
-    mlflow.log_artifacts(dir, visual_dir)
+    if mode != 'predict':
+        test_label_rgb = convert_classes_to_rgb(test_labels, h, w)
+        out_path_gt = os.path.join(dir, 'gt_' + test_name)
+        imageio.imsave(out_path_gt, test_label_rgb)
+        mlflow.log_artifacts(dir, visual_dir)
+    else:
+        vis_images = globals.config['data']['visualize_images']['test']
+        if test_name in vis_images or vis_images=='all':
+            mlflow.log_artifact(out_path_img, visual_dir)
+            mlflow.log_artifact(out_path_pred, visual_dir)
+
 
 def save_image_color_legend():
     visual_dir = 'qualitative_results/'

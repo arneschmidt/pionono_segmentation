@@ -1,0 +1,34 @@
+data:
+  dataset_name: segmentation_tnbc
+  class_no: 5
+  class_names: ['other', 'tumor', 'stroma', 'inflammation', 'necrosis']
+  class_weights: [1., 1., 1., 1., 1.] #[4.7607, 0.4756, 0.5844, 1.5684, 3.1598]
+  ignore_last_class: True # index of class in gt to be deleted, else 'None'
+  path: /data/BasesDeDatos/clarify_tnbc/
+  train:
+    images: NA
+    masks: NA
+  val:
+    images: NA
+    masks: NA
+  test:
+    images: sample_patches
+    masks: NA
+  visualize_images:
+    train:
+      - None
+    val:
+      - None
+    test:
+      - None
+  normalization: False
+  augmentation:
+    use_augmentation: False # switch everything off and on, if True automatically flips and 90 degree rotations are used in this case
+    gaussian_blur_kernel: 5 # range 3-7
+    brightness_limit: 0.2
+    contrast_limit: 0.2
+    hue_shift_limit: 20
+    sat_shift_limit: 30
+
+
+
