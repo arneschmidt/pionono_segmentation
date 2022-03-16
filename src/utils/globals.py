@@ -11,7 +11,7 @@ def config_update(orig_dict, new_dict):
             tmp = config_update(orig_dict.get(key, { }), val)
             orig_dict[key] = tmp
         elif isinstance(val, list):
-            orig_dict[key] = (orig_dict.get(key, []) + val)
+            orig_dict[key] = val
         else:
             orig_dict[key] = new_dict[key]
     return orig_dict
@@ -43,5 +43,3 @@ def init_global_config(args):
         warnings.warn("No experiment folder was given. Use ./output folder to store experiment results.")
         config['logging']['experiment_folder'] = out_dir
         config['logging']['run_name'] = 'default'
-
-

@@ -28,7 +28,7 @@ def get_training_augmentation():
                                     sat_shift_limit=aug_config['sat_shift_limit'],
                                     p=0.5)
         ]
-        composed_transform = albu.Compose(train_transform)
+        composed_transform = albu.Compose(train_transform, additional_targets={'image0': 'image', 'image1': 'image'}) # TODO multimask
     else:
         composed_transform = None
     return composed_transform
@@ -151,30 +151,25 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
     ):
         self.ids = os.listdir(images_dir)
         self.images_fps = [os.path.join(images_dir, image_id) for image_id in self.ids]
-        self.annotators = self._init_annotators(masks_dir)
-
+        annotators = os.listdir(masks_dir)
+        self.annotators = [e for e in annotators if e not in ('expert', 'MV', 'STAPLE')]
+        self.annotators_fps = [os.path.join(masks_dir, annotator) for annotator in self.annotators]
+        self.masks_dir = masks_dir
+        self.annotators_no = len(self.annotators)
         print("Images: ", self.ids)
         print("Annotators: ")
         print(*self.annotators, sep = "\n")
-        sejfhej
-        # self.masks_fps
-        self.masks_fps = [os.path.join(masks_dir, image_id) for image_id in self.ids]
+        print("Number of annotators: ", self.annotators_no)
         self.class_no = globals.config['data']['class_no']
         self.class_values = self.set_class_values(self.class_no)
         self.augmentation = augmentation
         self.preprocessing = preprocessing
 
+        if config['data']['ignore_last_class']:
+            self.ignore_index = int(self.class_no) # deleted class is always set to the last index
+        else:
+            self.ignore_index = -100 # this means no index ignored
 
-    def _init_annotators(self, masks_dir):
-        annotators = os.listdir(masks_dir)
-        print("Annotator list: ", annotators)
-        annotators = [e for e in annotators if e not in ('expert', 'MV', 'STAPLE')]
-        ann_paths = [os.path.join(masks_dir, ann) for ann in annotators]
-        mask_index_list = []
-        for image_id in self.ids:
-            masks_list = [os.path.join(ann_path, image_id) if os.path.exists(os.path.join(ann_path, image_id)) else None for ann_path in ann_paths]
-            mask_index_list.append(masks_list)
-        return mask_index_list
 
 
     def __getitem__(self, i):
@@ -182,23 +177,38 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
         # read data
         image = cv2.imread(self.images_fps[i])
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        mask = cv2.imread(self.masks_fps[i], 0)
+        size_image, _, _ = image.shape
+        masks = []
+        for ann_path in self.annotators_fps:
+            mask_path = os.path.join(ann_path, self.ids[i])
+            if os.path.exists(mask_path):
+                masks.append(cv2.imread(mask_path, 0))
+                print("Exist ", mask_path)
+            else:
+                print("Not exist ", mask_path)
+                masks.append(self.ignore_index*np.ones_like(image[:,:,0]))
+
 
         # extract certain classes from mask (e.g. cars)
-        masks = [(mask == v) for v in self.class_values]
-        mask = np.stack(masks, axis=-1).astype('float')
+        masks = [[(mask == v) for v in self.class_values] for mask in masks]
+        masks = [np.stack(mask, axis=-1).astype('float') for mask in masks]
 
         # apply augmentations
         if self.augmentation:
-            sample = self.augmentation(image=image, mask=mask)
-            image, mask = sample['image'], sample['mask']
+            print("Augmentation!")
+            sample = self.augmentation(image=image, masks=masks)
+            images = sample['image']
+            masks = sample['masks']
 
         # apply preprocessing
         if self.preprocessing:
-            sample = self.preprocessing(image=image, mask=mask)
-            image, mask = sample['image'], sample['mask']
-
-        return image, mask, self.ids[i]
+            sample = self.preprocessing(image=image, masks=masks)
+            images = sample['image']
+            masks = sample['masks']
+        masks = np.array(masks)
+        print("Return ", len(masks), "masks")
+        print(masks.shape)
+        return image, masks, self.ids[i]
 
     def __len__(self):
         return len(self.ids)
