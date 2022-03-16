@@ -52,13 +52,11 @@ class ModelHandler():
             model.train()
 
             for j, (images, labels, imagename) in enumerate(trainloader):
-                print(images.shape, labels.shape)
-                print(imagename)
+                # print(images.shape, labels.shape)
+                # print(imagename)
                 images = images.cuda().float()  # to(device=device, dtype=torch.float32)
                 labels = labels.cuda().long()
 
-
-                sfsf
                 # zero the parameter gradients
                 optimizer.zero_grad()
 
