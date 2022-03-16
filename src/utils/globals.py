@@ -43,5 +43,3 @@ def init_global_config(args):
         warnings.warn("No experiment folder was given. Use ./output folder to store experiment results.")
         config['logging']['experiment_folder'] = out_dir
         config['logging']['run_name'] = 'default'
-
-
