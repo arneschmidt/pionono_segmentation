@@ -11,10 +11,10 @@ data:
     masks: masks
   val:
     images: patches
-    masks: masks
+    masks: masks/expert
   test:
     images: patches
-    masks: masks
+    masks: masks/expert
   visualize_images:
     train:
       - 'eval_A73Y_LL_x_ini_2148_y_ini_1074.png'

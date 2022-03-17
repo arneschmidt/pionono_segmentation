@@ -5,13 +5,20 @@ import numpy as np
 import utils.globals as globals
 from utils.saving import save_model, save_results, save_test_images, save_image_color_legend
 from utils.model_architecture import SegmentationModel
+from utils.crowd_model_architecture import Crowd_segmentationModel
+from utils.loss import noisy_label_loss
 from utils.test_helpers import segmentation_scores
 from utils.logging import log_results
 
 
 class ModelHandler():
-    def __init__(self):
-        self.model = SegmentationModel()
+    def __init__(self, annotators_no):
+        config = globals.config
+        if config['data']['crowd']:
+            self.model = Crowd_segmentationModel(annotators_no)
+            self.alpha = config['model']['alpha']
+        else:
+            self.model = SegmentationModel()
         self.model.cuda()
         if torch.cuda.is_available():
             print('Running on GPU')
@@ -54,23 +61,36 @@ class ModelHandler():
             for j, (images, labels, imagename) in enumerate(trainloader):
                 # print(images.shape, labels.shape)
                 # print(imagename)
+
+                # images =  images.permute(0,3,1,2)
                 images = images.cuda().float()  # to(device=device, dtype=torch.float32)
                 labels = labels.cuda().long()
 
+
                 # zero the parameter gradients
                 optimizer.zero_grad()
-
-                # forward + backward + optimize
-                y_pred = model(images)
-
-                _, labels = torch.max(labels, dim=1)
-                _, y_pred_max = torch.max(y_pred[:, 0:class_no], dim=1)
 
                 if config['data']['ignore_last_class']:
                     ignore_index = int(config['data']['class_no']) # deleted class is always set to the last index
                 else:
                     ignore_index = -100 # this means no index ignored
-                loss = torch.nn.CrossEntropyLoss(reduction='mean', ignore_index=ignore_index, weight=class_weights)(y_pred, labels)
+
+                if config['data']['crowd']:
+                    _, labels = torch.max(labels, dim=2)
+                    labels = labels.permute(1,0,2,3)
+                    # labels = torch.unsqueeze(labels, dim=2)
+                    y_pred, cms = model(images)
+                    loss, loss_ce, loss_trace = noisy_label_loss(y_pred, cms, list(labels), ignore_index,
+                                                                 self.alpha)
+                else:
+                    # forward + backward + optimize
+                    _, labels = torch.max(labels, dim=1)
+                    y_pred = model(images)
+                    loss = torch.nn.CrossEntropyLoss(reduction='mean', ignore_index=ignore_index, weight=class_weights)(
+                        y_pred, labels)
+
+                _, y_pred_max = torch.max(y_pred[:, 0:class_no], dim=1)
+
                 loss.backward()
                 optimizer.step()
 

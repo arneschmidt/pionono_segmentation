@@ -1,4 +1,5 @@
 data:
+  crowd: False
   dataset_name: dummy
   class_no: 5
   class_names: ['other', 'tumor', 'stroma', 'inflammation', 'necrosis']

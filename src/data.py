@@ -28,7 +28,7 @@ def get_training_augmentation():
                                     sat_shift_limit=aug_config['sat_shift_limit'],
                                     p=0.5)
         ]
-        composed_transform = albu.Compose(train_transform, additional_targets={'image0': 'image', 'image1': 'image'}) # TODO multimask
+        composed_transform = albu.Compose(train_transform)
     else:
         composed_transform = None
     return composed_transform
@@ -80,7 +80,7 @@ class CustomDataset(torch.utils.data.Dataset):
         augmentation (albumentations.Compose): data transfromation pipeline
             (e.g. flip, scale, etc.)
         preprocessing (albumentations.Compose): data preprocessing
-            (e.g. noralization, shape manipulation, etc.)
+            (e.g. normalization, shape manipulation, etc.)
     """
     def __init__(
             self,
@@ -165,7 +165,7 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
         self.augmentation = augmentation
         self.preprocessing = preprocessing
 
-        if config['data']['ignore_last_class']:
+        if globals.config['data']['ignore_last_class']:
             self.ignore_index = int(self.class_no) # deleted class is always set to the last index
         else:
             self.ignore_index = -100 # this means no index ignored
@@ -197,15 +197,16 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
         if self.augmentation:
             print("Augmentation!")
             sample = self.augmentation(image=image, masks=masks)
-            images = sample['image']
+            image = sample['image']
             masks = sample['masks']
 
         # apply preprocessing
         if self.preprocessing:
+            print("Preprocessing!")
             sample = self.preprocessing(image=image, masks=masks)
-            images = sample['image']
+            image = sample['image']
             masks = sample['masks']
-        masks = np.array(masks)
+        masks = torch.Tensor(masks)
         print("Return ", len(masks), "masks")
         print(masks.shape)
         return image, masks, self.ids[i]
@@ -244,17 +245,18 @@ def get_data_supervised():
 
     preprocessing = get_preprocessing(preprocessing_fn)
 
+    annotators_no = None
+
     if crowd:
         train_dataset = Crowdsourced_Dataset(train_image_folder, train_label_folder, augmentation=get_training_augmentation(),
                                       preprocessing = preprocessing)
-        validate_dataset = Crowdsourced_Dataset(val_image_folder, val_label_folder, preprocessing = preprocessing)
-        test_dataset = Crowdsourced_Dataset(test_image_folder, test_label_folder, preprocessing = preprocessing)
+        annotators_no = train_dataset.annotators_no
 
     else:
         train_dataset = CustomDataset(train_image_folder, train_label_folder, augmentation=get_training_augmentation(),
                                       preprocessing = preprocessing)
-        validate_dataset = CustomDataset(val_image_folder, val_label_folder, preprocessing = preprocessing)
-        test_dataset = CustomDataset(test_image_folder, test_label_folder, preprocessing = preprocessing)
+    validate_dataset = CustomDataset(val_image_folder, val_label_folder, preprocessing = preprocessing)
+    test_dataset = CustomDataset(test_image_folder, test_label_folder, preprocessing = preprocessing)
 
     trainloader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
     validateloader = data.DataLoader(validate_dataset, batch_size=batch_size, shuffle=False, num_workers=batch_size,
@@ -262,4 +264,4 @@ def get_data_supervised():
     testloader = data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=batch_size,
                                  drop_last=False)
 
-    return trainloader, validateloader, testloader
+    return trainloader, validateloader, testloader, annotators_no

@@ -2,6 +2,7 @@ data:
   dataset_config: dummy_experiment/dummy_crowd_dataset_config.yaml
 
 model:
+  alpha: 0.01
   epochs: 10
   batch_size: 2
   optimizer: adam # sgd_mom, adam
