@@ -36,7 +36,7 @@ def noisy_label_loss(pred, cms, labels, ignore_index, alpha=0.1):
         cm = cm.view(b, c ** 2, h * w).permute(0, 2, 1).contiguous().view(b * h * w, c * c).view(b * h * w, c, c)
 
         # normalisation along the rows:
-        print(cm.shape)
+        # print(cm.shape)
         cm = cm / cm.sum(1, keepdim=True)
 
         # matrix multiplication to calculate the predicted noisy segmentation:
@@ -45,6 +45,7 @@ def noisy_label_loss(pred, cms, labels, ignore_index, alpha=0.1):
         pred_noisy = torch.bmm(cm, pred_norm).view(b*h*w, c)
         pred_noisy = pred_noisy.view(b, h*w, c).permute(0, 2, 1).contiguous().view(b, c, h, w)
         loss_current = nn.CrossEntropyLoss(reduction='mean', ignore_index=ignore_index)(pred_noisy, label_noisy.view(b, h, w).long())
+        # print("loss_current: ", loss_current)
         main_loss += loss_current
         regularisation += torch.trace(torch.transpose(torch.sum(cm, dim=0), 0, 1)).sum() / (b * h * w)
 

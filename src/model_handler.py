@@ -58,12 +58,13 @@ class ModelHandler():
             print('\nEpoch: {}'.format(i))
             model.train()
 
-            for j, (images, labels, imagename) in enumerate(trainloader):
+            for j, (images, labels, imagename, annotators) in enumerate(trainloader):
                 # print(images.shape, labels.shape)
                 # print(imagename)
 
                 # images =  images.permute(0,3,1,2)
                 images = images.cuda().float()  # to(device=device, dtype=torch.float32)
+                labels = labels
                 labels = labels.cuda().long()
 
 
@@ -79,7 +80,7 @@ class ModelHandler():
                     _, labels = torch.max(labels, dim=2)
                     labels = labels.permute(1,0,2,3)
                     # labels = torch.unsqueeze(labels, dim=2)
-                    y_pred, cms = model(images)
+                    y_pred, cms = model(images, annotators)
                     loss, loss_ce, loss_trace = noisy_label_loss(y_pred, cms, list(labels), ignore_index,
                                                                  self.alpha)
                 else:
@@ -94,17 +95,19 @@ class ModelHandler():
                 loss.backward()
                 optimizer.step()
 
+                # TODO: save train in crowdsourcing
                 if j % int(config['logging']['interval']) == 0:
-                    train_results = self.get_results(y_pred_max, labels)
-                    log_results(train_results, mode='train', step=(i*len(trainloader)*batch_s+j))
+                    if not config['data']['crowd']:
+                        train_results = self.get_results(y_pred_max, labels)
+                        log_results(train_results, mode='train', step=(i*len(trainloader)*batch_s+j))
                     print("Iter {}/{} - batch loss : {:.4f}".format(j, len(trainloader), loss))
-
-                for k in range(len(imagename)):
-                    if imagename[k] in vis_train_images:
-                        labels_save = labels[k].cpu().detach().numpy()
-                        y_pred_max_save = y_pred_max[k].cpu().detach().numpy()
-                        images_save = images[k] #.cpu().detach().numpy()
-                        save_test_images(images_save, y_pred_max_save, labels_save, imagename[k], 'train')
+                if not config['data']['crowd']:
+                    for k in range(len(imagename)):
+                        if imagename[k] in vis_train_images:
+                            labels_save = labels[k].cpu().detach().numpy()
+                            y_pred_max_save = y_pred_max[k].cpu().detach().numpy()
+                            images_save = images[k] #.cpu().detach().numpy()
+                            save_test_images(images_save, y_pred_max_save, labels_save, imagename[k], 'train')
 
             val_results = self.evaluate(validateloader, mode = 'val')
             log_results(val_results, mode = 'val', step=int((i+1)*len(trainloader)*batch_s))
@@ -139,7 +142,10 @@ class ModelHandler():
         with torch.no_grad():
             for j, (test_img, test_label, test_name) in enumerate(evaluatedata):
                 test_img = test_img.to(device=device, dtype=torch.float32)
-                test_pred = model(test_img)
+                if globals.config['data']['crowd']:
+                    test_pred, _ = model(test_img)
+                else:
+                    test_pred = model(test_img)
                 _, test_pred = torch.max(test_pred[:, 0:class_no], dim=1)
                 test_pred_np = test_pred.cpu().detach().numpy()
                 test_label = test_label.cpu().detach().numpy()

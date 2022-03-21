@@ -183,9 +183,9 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
             mask_path = os.path.join(ann_path, self.ids[i])
             if os.path.exists(mask_path):
                 masks.append(cv2.imread(mask_path, 0))
-                print("Exist ", mask_path)
+                # print("Exist ", mask_path)
             else:
-                print("Not exist ", mask_path)
+                # print("Not exist ", mask_path)
                 masks.append(self.ignore_index*np.ones_like(image[:,:,0]))
 
 
@@ -195,21 +195,114 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
 
         # apply augmentations
         if self.augmentation:
-            print("Augmentation!")
+            # print("Augmentation!")
             sample = self.augmentation(image=image, masks=masks)
             image = sample['image']
             masks = sample['masks']
 
         # apply preprocessing
         if self.preprocessing:
-            print("Preprocessing!")
+            # print("Preprocessing!")
             sample = self.preprocessing(image=image, masks=masks)
             image = sample['image']
             masks = sample['masks']
-        masks = torch.Tensor(masks)
-        print("Return ", len(masks), "masks")
-        print(masks.shape)
+        masks = torch.Tensor(np.stack(masks, axis=0))
+        # print("Return ", len(masks), "masks")
+        # print(masks.shape)
         return image, masks, self.ids[i]
+
+    def __len__(self):
+        return len(self.ids)
+
+    def set_class_values(self, class_no):
+        if globals.config['data']['ignore_last_class']:
+            class_values = list(range(class_no + 1))
+        else:
+            class_values = list(range(class_no))
+        return class_values
+
+
+class Crowdsourced_Dataset(torch.utils.data.Dataset):
+    """Crowdsourced_Dataset Dataset. Read images, apply augmentation and preprocessing transformations.
+    Args:
+        images_dir (str): path to images folder
+        masks_dir (str): path to segmentation masks folder
+        class_values (list): values of classes to extract from segmentation mask
+        augmentation (albumentations.Compose): data transfromation pipeline
+            (e.g. flip, scale, etc.)
+        preprocessing (albumentations.Compose): data preprocessing
+            (e.g. noralization, shape manipulation, etc.)
+    """
+    def __init__(
+            self,
+            images_dir,
+            masks_dir,
+            augmentation=None,
+            preprocessing=None
+    ):
+        self.ids = os.listdir(images_dir)
+        self.images_fps = [os.path.join(images_dir, image_id) for image_id in self.ids]
+        annotators = os.listdir(masks_dir)
+        self.annotators = [e for e in annotators if e not in ('expert', 'MV', 'STAPLE')]
+        self.annotators_fps = [os.path.join(masks_dir, annotator) for annotator in self.annotators]
+        self.masks_dir = masks_dir
+        self.annotators_no = len(self.annotators)
+        print("Images: ", self.ids)
+        print("Annotators: ")
+        print(*self.annotators, sep = "\n")
+        print("Number of annotators: ", self.annotators_no)
+        self.class_no = globals.config['data']['class_no']
+        self.class_values = self.set_class_values(self.class_no)
+        self.augmentation = augmentation
+        self.preprocessing = preprocessing
+
+        if globals.config['data']['ignore_last_class']:
+            self.ignore_index = int(self.class_no) # deleted class is always set to the last index
+        else:
+            self.ignore_index = -100 # this means no index ignored
+
+
+
+    def __getitem__(self, i):
+
+        # read data
+        image = cv2.imread(self.images_fps[i])
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        size_image, _, _ = image.shape
+        masks = []
+        indexes = []
+        for j, ann_path in enumerate(self.annotators_fps):
+            mask_path = os.path.join(ann_path, self.ids[i])
+            if os.path.exists(mask_path):
+                masks.append(cv2.imread(mask_path, 0))
+                indexes.append(True)
+                print("Exist ", mask_path)
+            else:
+                indexes.append(False)
+                print("Not exist ", mask_path)
+
+
+        # extract certain classes from mask (e.g. cars)
+        masks = [[(mask == v) for v in self.class_values] for mask in masks]
+        masks = [np.stack(mask, axis=-1).astype('float') for mask in masks]
+
+        # apply augmentations
+        if self.augmentation:
+            # print("Augmentation!")
+            sample = self.augmentation(image=image, masks=masks)
+            image = sample['image']
+            masks = sample['masks']
+
+        # apply preprocessing
+        if self.preprocessing:
+            # print("Preprocessing!")
+            sample = self.preprocessing(image=image, masks=masks)
+            image = sample['image']
+            masks = sample['masks']
+        masks = torch.Tensor(np.stack(masks, axis=0))
+        # print("Return ", len(masks), "masks")
+        # print(masks.shape)
+        return image, masks, self.ids[i], j
 
     def __len__(self):
         return len(self.ids)

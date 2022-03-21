@@ -14,7 +14,7 @@ from utils.logging import start_logging
 def main():
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
     os.environ["CUDA_VISIBLE_DEVICES"] = str(0)
-    os.environ['CUDA_LAUNCH_BLOCKING'] = str(1)
+    # os.environ['CUDA_LAUNCH_BLOCKING'] = str(1)
 
     start_logging()
 
