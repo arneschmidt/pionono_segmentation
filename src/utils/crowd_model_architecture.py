@@ -104,12 +104,11 @@ class Crowd_segmentationModel(torch.nn.Module):
                 self.spatial_cms.append(cm_layers(in_channels=16, norm='in', class_no=config['data']['class_no'])) # TODO: arrange in_channels
         self.activation = torch.nn.Softmax(dim=1)
 
-    def forward(self, x, annotators):
+    def forward(self, x):
         cms = []
         x = self.seg_model.encoder(x)
         x = self.seg_model.decoder(*x)
-        # for i in annotators:
-        for i in self.noisy_labels_no:
+        for i in range(self.noisy_labels_no):
             cm = self.spatial_cms[i](x)
             cms.append(cm)
         x = self.seg_model.segmentation_head(x)

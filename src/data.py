@@ -221,9 +221,9 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
             class_values = list(range(class_no))
         return class_values
 
-
+"""
 class Crowdsourced_Dataset(torch.utils.data.Dataset):
-    """Crowdsourced_Dataset Dataset. Read images, apply augmentation and preprocessing transformations.
+    Crowdsourced_Dataset Dataset. Read images, apply augmentation and preprocessing transformations.
     Args:
         images_dir (str): path to images folder
         masks_dir (str): path to segmentation masks folder
@@ -232,7 +232,7 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
             (e.g. flip, scale, etc.)
         preprocessing (albumentations.Compose): data preprocessing
             (e.g. noralization, shape manipulation, etc.)
-    """
+
     def __init__(
             self,
             images_dir,
@@ -313,6 +313,7 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
         else:
             class_values = list(range(class_no))
         return class_values
+"""
 
 
 

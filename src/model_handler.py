@@ -58,13 +58,12 @@ class ModelHandler():
             print('\nEpoch: {}'.format(i))
             model.train()
 
-            for j, (images, labels, imagename, annotators) in enumerate(trainloader):
+            for j, (images, labels, imagename) in enumerate(trainloader):
                 # print(images.shape, labels.shape)
                 # print(imagename)
 
                 # images =  images.permute(0,3,1,2)
                 images = images.cuda().float()  # to(device=device, dtype=torch.float32)
-                labels = labels
                 labels = labels.cuda().long()
 
 
@@ -80,7 +79,7 @@ class ModelHandler():
                     _, labels = torch.max(labels, dim=2)
                     labels = labels.permute(1,0,2,3)
                     # labels = torch.unsqueeze(labels, dim=2)
-                    y_pred, cms = model(images, annotators)
+                    y_pred, cms = model(images)
                     loss, loss_ce, loss_trace = noisy_label_loss(y_pred, cms, list(labels), ignore_index,
                                                                  self.alpha)
                 else:
