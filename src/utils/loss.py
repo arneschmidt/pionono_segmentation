@@ -38,6 +38,7 @@ def noisy_label_loss(pred, cms, labels, ignore_index, alpha=0.1):
         # normalisation along the rows:
         # print(cm.shape)
         cm = cm / cm.sum(1, keepdim=True)
+        print(cm[0])
 
         # matrix multiplication to calculate the predicted noisy segmentation:
         # cm: b*h*w x c x c
@@ -47,9 +48,12 @@ def noisy_label_loss(pred, cms, labels, ignore_index, alpha=0.1):
         loss_current = nn.CrossEntropyLoss(reduction='mean', ignore_index=ignore_index)(pred_noisy, label_noisy.view(b, h, w).long())
         # print("loss_current: ", loss_current)
         main_loss += loss_current
+        print("annotator loss: ", loss_current)
         regularisation += torch.trace(torch.transpose(torch.sum(cm, dim=0), 0, 1)).sum() / (b * h * w)
 
     regularisation = alpha*regularisation
+    main_loss = main_loss/3
     loss = main_loss + regularisation
+    print("main loss: ", main_loss, "\n Regularization: ", regularisation)
 
     return loss, main_loss, regularisation

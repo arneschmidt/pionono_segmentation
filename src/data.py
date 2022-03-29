@@ -160,6 +160,7 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
         print("Annotators: ")
         print(*self.annotators, sep = "\n")
         print("Number of annotators: ", self.annotators_no)
+        print("Paths of annotators ", *self.annotators_fps)
         self.class_no = globals.config['data']['class_no']
         self.class_values = self.set_class_values(self.class_no)
         self.augmentation = augmentation

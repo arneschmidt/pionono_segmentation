@@ -16,18 +16,8 @@ data:
     images: patches
     masks: masks/expert
   visualize_images:
-    train:
-      - 'eval_A73Y_LL_x_ini_2148_y_ini_1074.png'
-      - 'eval_A73Y_LL_x_ini_2148_y_ini_1432.png'
-      - 'eval_A73Y_LL_x_ini_2148_y_ini_1790.png'
-      - 'eval_A73Y_LL_x_ini_2506_y_ini_1432.png'
-      - 'eval_A73Y_LL_x_ini_2506_y_ini_1790.png'
-    val:
-      - 'eval_A73Y_LL_x_ini_2148_y_ini_1074.png'
-      - 'eval_A73Y_LL_x_ini_2148_y_ini_1432.png'
-      - 'eval_A73Y_LL_x_ini_2148_y_ini_1790.png'
-      - 'eval_A73Y_LL_x_ini_2506_y_ini_1432.png'
-      - 'eval_A73Y_LL_x_ini_2506_y_ini_1790.png'
+    train: None
+    val: None
     test: all #['core_A12F_AO_x_ini_0_y_ini_0.png', 'core_A12F_AO_x_ini_0_y_ini_358.png'] # 'all', 'None' or ['img1', 'img2'..]
   normalization: False
   augmentation:

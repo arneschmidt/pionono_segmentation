@@ -80,8 +80,7 @@ class cm_layers(torch.nn.Module):
         self.relu = torch.nn.Softplus()
 
     def forward(self, x):
-        # y = self.relu(self.conv_last(self.conv_2(self.conv_1(x))))
-        y = self.relu(self.conv_last(self.conv_1(x)))
+        y = self.relu(self.conv_last(self.conv_2(self.conv_1(x))))
 
         return y
 
@@ -109,7 +108,9 @@ class Crowd_segmentationModel(torch.nn.Module):
         x = self.seg_model.encoder(x)
         x = self.seg_model.decoder(*x)
         for i in range(self.noisy_labels_no):
-            cm = self.spatial_cms[i](x)
+            cm = self.spatial_cms[i](x) # BxCxCxWxH
+            cm_ = cm[0,:,:,0,0]
+            print("CM! ", cm_/cm_.sum(0, keepdim = True))
             cms.append(cm)
         x = self.seg_model.segmentation_head(x)
         y = self.activation(x)

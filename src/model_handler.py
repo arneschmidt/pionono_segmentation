@@ -43,9 +43,12 @@ class ModelHandler():
         save_image_color_legend()
 
         if config['model']['optimizer'] == 'adam':
-            optimizer = torch.optim.Adam([
-                dict(params=model.parameters(), lr=learning_rate),
-            ])
+            if config['data']['crowd']:
+                print("Crowd optimization")
+                optimizer = torch.optim.Adam([
+                    {'params': model.seg_model.parameters()},
+                    {'params': model.spatial_cms.parameters(), 'lr': 1e-2}
+                ], lr=learning_rate)
         elif config['model']['optimizer'] == 'sgd_mom':
             optimizer = torch.optim.SGD([
                 dict(params=model.parameters(), lr=learning_rate, momentum=0.9, nesterov=True),

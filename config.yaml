@@ -4,7 +4,7 @@ data:
 model:
   crowd_global: True
   alpha: 0.4
-  epochs: 10
+  epochs: 100
   batch_size: 2
   optimizer: adam # sgd_mom, adam
   learning_rate: 0.0001
