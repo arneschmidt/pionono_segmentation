@@ -28,6 +28,7 @@ def save_test_images(test_imgs:torch.Tensor, test_preds: np.array, test_labels: 
     test_preds = np.asarray(test_preds, dtype=np.uint8)
     test_labels = np.asarray(test_labels, dtype=np.uint8)
 
+    # print("test name ", test_name)
     out_path = os.path.join(dir, 'img_' + test_name)
     save_image(test_imgs, out_path)
 
@@ -37,6 +38,34 @@ def save_test_images(test_imgs:torch.Tensor, test_preds: np.array, test_labels: 
 
     test_label_rgb = convert_classes_to_rgb(test_labels, h, w)
     out_path = os.path.join(dir, 'gt_' + test_name)
+    imageio.imsave(out_path, test_label_rgb)
+    mlflow.log_artifacts(dir, visual_dir)
+
+# TODO: funcion que guarde bien el crowdsourcing
+def save_crowd_images(test_imgs:torch.Tensor, gt_pred: np.array, test_preds: np.array, test_labels: np.array, test_name: np.array, annotator):
+    visual_dir = 'qualitative_results/' + "train_crowd"
+    dir = os.path.join(globals.config['logging']['experiment_folder'], visual_dir)
+    os.makedirs(dir, exist_ok=True)
+
+    h, w = np.shape(test_labels)
+
+    test_preds = np.asarray(test_preds, dtype=np.uint8)
+    test_labels = np.asarray(test_labels, dtype=np.uint8)
+
+    # print("test name ", test_name)
+    out_path = os.path.join(dir, 'img_' + test_name)
+    save_image(test_imgs, out_path)
+
+    test_pred_rgb = convert_classes_to_rgb(test_preds, h, w)
+    out_path = os.path.join(dir, annotator + '_pred_' + test_name)
+    imageio.imsave(out_path, test_pred_rgb)
+
+    gt_pred_rgb = convert_classes_to_rgb(gt_pred, h, w)
+    out_path = os.path.join(dir, 'gt_pred_' + test_name)
+    imageio.imsave(out_path, gt_pred_rgb)
+
+    test_label_rgb = convert_classes_to_rgb(test_labels, h, w)
+    out_path = os.path.join(dir, annotator + '_gt_' + test_name)
     imageio.imsave(out_path, test_label_rgb)
     mlflow.log_artifacts(dir, visual_dir)
 

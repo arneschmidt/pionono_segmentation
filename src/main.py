@@ -12,17 +12,17 @@ from utils.logging import start_logging
 
 
 def main():
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(0)
+    # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+    # os.environ["CUDA_VISIBLE_DEVICES"] = str(0)
     # os.environ['CUDA_LAUNCH_BLOCKING'] = str(1)
 
     start_logging()
 
     # load data
-    trainloader, validateloader, testloader, annotators_no = get_data_supervised()
+    trainloader, validateloader, testloader, annotators = get_data_supervised()
 
     # load and train the model
-    model_handler = ModelHandler(annotators_no)
+    model_handler = ModelHandler(annotators)
     model_handler.train(trainloader, validateloader)
     model_handler.test(testloader)
 

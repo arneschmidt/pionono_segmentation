@@ -57,5 +57,3 @@ def segmentation_scores(label_trues, label_preds, metric_names):
         assert metric in results.keys()
 
     return results
-
-

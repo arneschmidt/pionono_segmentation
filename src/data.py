@@ -340,12 +340,12 @@ def get_data_supervised():
 
     preprocessing = get_preprocessing(preprocessing_fn)
 
-    annotators_no = None
+    annotators = []
 
     if crowd:
         train_dataset = Crowdsourced_Dataset(train_image_folder, train_label_folder, augmentation=get_training_augmentation(),
                                       preprocessing = preprocessing)
-        annotators_no = train_dataset.annotators_no
+        annotators = train_dataset.annotators
 
     else:
         train_dataset = CustomDataset(train_image_folder, train_label_folder, augmentation=get_training_augmentation(),
@@ -359,4 +359,4 @@ def get_data_supervised():
     testloader = data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=batch_size,
                                  drop_last=False)
 
-    return trainloader, validateloader, testloader, annotators_no
+    return trainloader, validateloader, testloader, annotators

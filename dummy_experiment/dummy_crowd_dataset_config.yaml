@@ -16,7 +16,7 @@ data:
     images: patches
     masks: masks/expert
   visualize_images:
-    train: None
+    train: all
     val: None
     test: all #['core_A12F_AO_x_ini_0_y_ini_0.png', 'core_A12F_AO_x_ini_0_y_ini_358.png'] # 'all', 'None' or ['img1', 'img2'..]
   normalization: False
