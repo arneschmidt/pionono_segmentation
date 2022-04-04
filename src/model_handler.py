@@ -50,18 +50,14 @@ class ModelHandler():
                 print("Crowd optimization")
                 optimizer = torch.optim.Adam([
                     {'params': model.seg_model.parameters()},
-                    {'params': model.spatial_cms.parameters(), 'lr': 1e-3}
+                    {'params': model.spatial_cms.parameters(), 'lr': 1e-2}
                 ], lr=learning_rate)
-            else:
-                optimizer = torch.optim.Adam([
-                    dict(params=model.parameters(), lr=learning_rate),
-                ])
         """
+
         if config['model']['optimizer'] == 'adam':
             optimizer = torch.optim.Adam([
                 dict(params=model.parameters(), lr=learning_rate),
             ])
-
         elif config['model']['optimizer'] == 'sgd_mom':
             optimizer = torch.optim.SGD([
                 dict(params=model.parameters(), lr=learning_rate, momentum=0.9, nesterov=True),
@@ -69,13 +65,16 @@ class ModelHandler():
         else:
             raise Exception('Choose valid optimizer!')
 
-        min_trace = False
+
+
+        min_trace = config['model']['min_trace']
+
         for i in range(0, epochs):
 
             print('\nEpoch: {}'.format(i))
             model.train()
 
-            if i > 5:
+            if i > 10:
                 min_trace = True
 
             for j, (images, labels, imagename) in enumerate(trainloader):
@@ -146,7 +145,7 @@ class ModelHandler():
             if config['data']['crowd'] and config['model']['crowd_global']:
                 for ann_ix, cm in enumerate(cms):
                     cm_ = cm[0, :, :, 0, 0]
-                    print("CM NP", str(ann_ix), ": ", cm_ / cm_.sum(0, keepdim=True))
+                    print("CM NP", str(ann_ix), ": ", torch.nn.Softmax(dim=1)(cm_))
                     # save_confusion_matrix(ann_ix, cm_)
 
     def test(self, testloader):

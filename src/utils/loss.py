@@ -37,7 +37,8 @@ def noisy_label_loss(pred, cms, labels, ignore_index, min_trace = False, alpha=0
 
         # normalisation along the rows:
         # print(cm.shape)
-        cm = cm / cm.sum(1, keepdim=True)
+        # cm = cm / cm.sum(1, keepdim=True) # dim 1 because of rows (dim 0 is batch)
+        cm = torch.nn.Softmax(dim=1)(cm)
         # print(cm[0])
 
         # matrix multiplication to calculate the predicted noisy segmentation:
@@ -49,14 +50,19 @@ def noisy_label_loss(pred, cms, labels, ignore_index, min_trace = False, alpha=0
         # print("loss_current: ", loss_current)
         main_loss += loss_current
         # print("annotator loss: ", loss_current)
-        regularisation += torch.trace(torch.transpose(torch.sum(cm, dim=0), 0, 1)).sum() / (b * h * w)
+        if loss_current != 0:
+            regularisation += torch.trace(torch.transpose(torch.sum(cm, dim=0), 0, 1)).sum() / (b * h * w)
 
-    regularisation = alpha*regularisation
+    # regularisation = alpha*(regularisation/len(labels))
+    regularisation = alpha * regularisation
     # regularisation = 0
-    main_loss = main_loss/len(labels) # TODO: automatize this
+    # main_loss = main_loss/len(labels) # TODO: automatize this
+    """
     if min_trace:
         loss = main_loss + regularisation
     else:
         loss = main_loss - regularisation
+    """
+    loss = main_loss - regularisation
 
     return loss, main_loss, regularisation

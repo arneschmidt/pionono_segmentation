@@ -58,12 +58,13 @@ class gcm_layers(torch.nn.Module):
         self.input_height = input_height
         self.input_width = input_width
         self.global_weights = torch.nn.Parameter(torch.eye(class_no))
-        self.relu = torch.nn.Softplus()
+        self.relu = torch.nn.ReLU()
 
     def forward(self, x):
         all_weights = self.global_weights.unsqueeze(0).repeat(x.size(0), 1, 1)
         all_weights = all_weights.unsqueeze(3).unsqueeze(4).repeat(1, 1, 1, self.input_height, self.input_width)
-        y = self.relu(all_weights)
+        # y = self.relu(all_weights)
+        y = all_weights
 
         return y
 
