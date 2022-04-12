@@ -2,9 +2,10 @@ data:
   dataset_config: dummy_experiment/dummy_crowd_dataset_config.yaml
 
 model:
+  min_trace: False
   crowd_global: True
-  alpha: 0.1
-  epochs: 3
+  alpha: 0.4
+  epochs: 100
   batch_size: 5
   optimizer: adam # sgd_mom, adam
   learning_rate: 0.0001

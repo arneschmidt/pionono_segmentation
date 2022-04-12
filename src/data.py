@@ -2,7 +2,7 @@ import os
 import torch
 import numpy as np
 import cv2
-import functools
+import random
 
 from torch.utils import data
 
@@ -179,38 +179,43 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
         image = cv2.imread(self.images_fps[i])
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         size_image, _, _ = image.shape
-        masks = []
-        for ann_path in self.annotators_fps:
+        indexes = np.random.permutation(self.annotators_no)
+        for ann_index in indexes:
+            ann_path = self.annotators_fps[ann_index]
             mask_path = os.path.join(ann_path, self.ids[i])
             if os.path.exists(mask_path):
-                masks.append(cv2.imread(mask_path, 0))
+                mask = cv2.imread(mask_path, 0)
+                # extract certain classes from mask (e.g. cars)
+                mask = [(mask == v) for v in self.class_values]
+                mask = np.stack(mask, axis=-1).astype('float')
+                annotator_id = torch.zeros(len(self.annotators_fps))
+                annotator_id[self.annotators_fps.index(ann_path)] = 1
+                break
+
                 # print("Exist ", mask_path)
             else:
                 # print("Not exist ", mask_path)
-                masks.append(self.ignore_index*np.ones_like(image[:,:,0]))
+                continue
 
 
-        # extract certain classes from mask (e.g. cars)
-        masks = [[(mask == v) for v in self.class_values] for mask in masks]
-        masks = [np.stack(mask, axis=-1).astype('float') for mask in masks]
+
 
         # apply augmentations
         if self.augmentation:
             # print("Augmentation!")
-            sample = self.augmentation(image=image, masks=masks)
+            sample = self.augmentation(image=image, mask=mask)
             image = sample['image']
-            masks = sample['masks']
+            mask = sample['mask']
 
         # apply preprocessing
         if self.preprocessing:
             # print("Preprocessing!")
-            sample = self.preprocessing(image=image, masks=masks)
+            sample = self.preprocessing(image=image, mask=mask)
             image = sample['image']
-            masks = sample['masks']
-        masks = torch.Tensor(np.stack(masks, axis=0))
+            mask = sample['mask']
         # print("Return ", len(masks), "masks")
         # print(masks.shape)
-        return image, masks, self.ids[i]
+        return image, mask, self.ids[i], annotator_id
 
     def __len__(self):
         return len(self.ids)

@@ -54,7 +54,12 @@ class ModelHandler():
                 ], lr=learning_rate)
         """
 
-        if config['model']['optimizer'] == 'adam':
+        if config['data']['crowd']:
+            optimizer= torch.optim.Adam([
+                {'params': model.seg_model.parameters()},
+                {'params': model.crowd_layers.parameters(), 'lr': 1e-2}
+            ], lr=learning_rate)
+        elif config['model']['optimizer'] == 'adam':
             optimizer = torch.optim.Adam([
                 dict(params=model.parameters(), lr=learning_rate),
             ])
@@ -74,16 +79,19 @@ class ModelHandler():
             print('\nEpoch: {}'.format(i))
             model.train()
 
-            if i > 10:
+            if i > 50:
                 min_trace = True
 
-            for j, (images, labels, imagename) in enumerate(trainloader):
+            for j, (images, labels, imagename, ann_ids) in enumerate(trainloader):
                 # print(images.shape, labels.shape)
                 # print(imagename)
 
                 # images =  images.permute(0,3,1,2)
                 images = images.cuda().float()  # to(device=device, dtype=torch.float32)
+                #print("labels", labels.shape)
                 labels = labels.cuda().long()
+                ann_ids = ann_ids.cuda().float()
+                #print("Ann_IDs: ", ann_ids)
 
                 # zero the parameter gradients
                 optimizer.zero_grad()
@@ -95,11 +103,13 @@ class ModelHandler():
 
                 self.ignore_index = ignore_index
                 if config['data']['crowd']:
-                    _, labels = torch.max(labels, dim=2)
-                    labels = labels.permute(1, 0, 2, 3)
+                    # _, labels = torch.max(labels, dim=2)
+
+                    _, labels = torch.max(labels, dim=1)
+                    # labels = labels.permute(1, 0, 2, 3)
                     # labels = torch.unsqueeze(labels, dim=2)
-                    y_pred, cms = model(images)
-                    loss, loss_ce, loss_trace = noisy_label_loss(y_pred, cms, list(labels), ignore_index,
+                    y_pred, cms = model(images, ann_ids)
+                    loss, loss_ce, loss_trace = noisy_label_loss(y_pred, cms, labels, ignore_index,
                                                                  min_trace, self.alpha)
                 else:
                     # forward + backward + optimize
@@ -120,7 +130,8 @@ class ModelHandler():
                         log_results(train_results, mode='train', step=(i * len(trainloader) * batch_s + j))
                     print("Iter {}/{} - batch loss : {:.4f}".format(j, len(trainloader), loss))
                     if config['data']['crowd']:
-                        self.evaluate_crowd(trainloader, mode='train', annotators=self.annotators)
+                        continue
+                        # self.evaluate_crowd(trainloader, mode='train', annotators=self.annotators)
                     else:
                         for k in range(len(imagename)):
                             if imagename[k] in vis_train_images:
@@ -144,8 +155,9 @@ class ModelHandler():
 
             if config['data']['crowd'] and config['model']['crowd_global']:
                 for ann_ix, cm in enumerate(cms):
-                    cm_ = cm[0, :, :, 0, 0]
-                    print("CM NP", str(ann_ix), ": ", torch.nn.Softmax(dim=1)(cm_))
+                    cm_ = cm[:, :, 0, 0]
+                    #_, ann_id = torch.max(ann_ids[ann_ix])
+                    print("CM NP", ann_ids[ann_ix], ": ", cm_)
                     # save_confusion_matrix(ann_ix, cm_)
 
     def test(self, testloader):
@@ -206,7 +218,7 @@ class ModelHandler():
         model.eval()
 
         with torch.no_grad():
-            for j, (test_img, test_label, test_name) in enumerate(evaluatedata):
+            for j, (test_img, test_label, test_name, ann_id) in enumerate(evaluatedata):
                 test_img = test_img.to(device=device, dtype=torch.float32)
                 pred_noisy_list = []
                 test_pred, cms = model(test_img)
@@ -214,8 +226,8 @@ class ModelHandler():
                 test_pred_np = test_pred.cpu().detach().numpy()
                 test_pred_np = np.argmax(test_pred_np, axis=1)
 
-                _, test_label = torch.max(test_label, dim=2)
-                test_label = test_label.permute(1, 0, 2, 3)
+                _, test_label = torch.max(test_label, dim=1)
+                #test_label = test_label.permute(1, 0, 2, 3)
                 test_label = test_label.cpu().detach().numpy()
                 # print(test_pred.size())
                 b, c, h, w = test_pred.size()
