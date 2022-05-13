@@ -3,7 +3,8 @@ data:
 
 model:
   min_trace: False
-  crowd_global: True
+  crowd_type: image # pixel, image, global
+  identity_reg: False
   alpha: 0.4
   epochs: 100
   batch_size: 5

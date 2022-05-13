@@ -197,9 +197,6 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
                 # print("Not exist ", mask_path)
                 continue
 
-
-
-
         # apply augmentations
         if self.augmentation:
             # print("Augmentation!")

@@ -60,7 +60,7 @@ class gcm_layers(torch.nn.Module):
         self.input_height = input_height
         self.input_width = input_width
         self.global_weights = torch.nn.Parameter(torch.eye(class_no))
-        self.dense_annotator = torch.nn.Linear(self.noisy_labels_no, torch.ceil(self.noisy_labels_no/2))
+        self.dense_annotator = torch.nn.Linear(self.noisy_labels_no, torch.ceil(self.noisy_labels_no / 2))
         self.relu = torch.nn.ReLU()
 
     def forward(self, x, A_id):
@@ -81,17 +81,42 @@ class cm_layers(torch.nn.Module):
     has the size (b, c**2, h, w)
     """
 
-    def __init__(self, in_channels, norm, class_no):
+    def __init__(self, in_channels, norm, class_no, noisy_labels_no):
         super(cm_layers, self).__init__()
         self.conv_1 = double_conv(in_channels=in_channels, out_channels=in_channels, norm=norm, step=1)
         self.conv_2 = double_conv(in_channels=in_channels, out_channels=in_channels, norm=norm, step=1)
-        self.conv_last = torch.nn.Conv2d(in_channels, class_no ** 2, 1, bias=True)
+        # self.conv_last = torch.nn.Conv2d(in_channels, class_no ** 2, 1, bias=True)
+        self.class_no = class_no
+        self.dense = torch.nn.Linear(66, 25)
+        self.dense2 = torch.nn.Linear(25, 25)
+        self.dense_annotator = torch.nn.Linear(noisy_labels_no, noisy_labels_no)
+        self.dense_classes = torch.nn.Linear(noisy_labels_no, 50)
         self.relu = torch.nn.Softplus()
+        self.act = torch.nn.Softmax(dim=3)
 
-    def forward(self, x):
-        y = self.relu(self.conv_last(self.conv_2(self.conv_1(x))))
+    def forward(self, A_id, x):
+        # TODO add the one-hot to the x
+        # A_id 20
+        # x BxWxHx16 -> BxWxHx16+20
+        #y = self.relu(self.conv_last(self.conv_2(self.conv_1(x))))
+        y = self.conv_2(self.conv_1(x))
+        A_id = self.relu(self.dense_annotator(A_id))  # B, F_A
+        A_id = self.relu(self.dense_classes(A_id))
+        #print("A_id", A_id.shape)
+        #print("image features", y.shape)
+        A_id = A_id.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 512, 512)
+        #print("A_id", A_id.shape)
+
+        y = torch.cat((A_id, y), dim=1)
+        #print("y", y.shape)
+        y = y.permute(0, 2, 3, 1)
+        y = self.dense2(self.relu(self.dense(y)))
+        
+        y = self.act(y.view(-1, 512, 512, self.class_no, self.class_no))
+        y = y.view(-1, 512, 512, self.class_no ** 2).permute(0,3,1,2)
 
         return y
+
 
 class global_CM(torch.nn.Module):
     """ This defines the global confusion matrix layer. It defines a (class_no x class_no) confusion matrix, we then use unsqueeze function to match the
@@ -105,21 +130,81 @@ class global_CM(torch.nn.Module):
         self.input_height = input_height
         self.input_width = input_width
         self.noisy_labels_no = noisy_labels_no
-        self.dense_annotator = torch.nn.Linear(noisy_labels_no, int(np.ceil(noisy_labels_no/2)))
-        self.dense_classes = torch.nn.Linear(int(np.ceil(self.noisy_labels_no/2)), 10)
-        self.dense_output = torch.nn.Linear(10, class_no**2)
-        self.act = torch.nn.Softmax(dim=1)
-        self.relu = torch.nn.ReLU()
+        self.dense_output = torch.nn.Linear(noisy_labels_no, class_no ** 2)
+        self.act = torch.nn.Softplus()
+        # self.relu = torch.nn.ReLU()
 
-    def forward(self, A_id):
-        A_feat = self.dense_annotator(A_id) # B, F_A
-        A_feat = self.relu(A_feat)
-        feat_class = self.dense_classes(A_feat)
-        output = self.dense_output(feat_class)
+    def forward(self, A_id, x=None):
+        #A_feat = self.relu(self.dense_annotator(A_id))  # B, F_A
+        #feat_class = self.relu(self.dense_classes(A_feat))
+        #output = self.dense_output(feat_class)
+        #output = self.act(output.view(-1, self.class_no, self.class_no))
+        output = self.act(self.dense_output(A_id))
+        all_weights = output.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 1, 512, 512)
+        #print(all_weights.shape)
+        #y = all_weights / all_weights.sum(1, keepdim=True)
+        # print(y.sum(1))
+        #print(y.shape)
+        y = all_weights.view(-1, self.class_no**2, self.input_height, self.input_width)
+
+
+
+        return y
+
+
+class conv_layers_image(torch.nn.Module):
+    def __init__(self, in_channels):
+        super(conv_layers_image, self).__init__()
+        self.conv = torch.nn.Conv2d(in_channels=in_channels, out_channels=8, kernel_size=3, stride=1, padding=1)
+        self.conv2 = torch.nn.Conv2d(in_channels=8, out_channels=4, kernel_size=3, stride=1, padding=1)
+        self.conv3 = torch.nn.Conv2d(in_channels=4, out_channels=4, kernel_size=3, stride=1, padding=1)
+        self.relu = torch.nn.ReLU()
+        self.pool = torch.nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv_bn = torch.nn.BatchNorm2d(8)
+        self.conv_bn2 = torch.nn.BatchNorm2d(4)
+        self.fc_bn = torch.nn.BatchNorm1d(256)
+        self.flatten = torch.nn.Flatten()
+        self.fc1 = torch.nn.Linear(in_features=4096, out_features=256)
+        self.fc2 = torch.nn.Linear(in_features=256, out_features=128)
+
+    def forward(self, x):
+        x = self.pool(self.relu(self.conv_bn(self.conv(x))))
+        x = self.pool(self.relu(self.conv_bn2(self.conv2(x))))
+        x = self.pool(self.relu(self.conv_bn2(self.conv3(x))))
+        x = self.pool(self.relu(self.conv_bn2(self.conv3(x))))
+        x = self.flatten(x)
+
+        x = self.relu(self.fc_bn(self.fc1(x)))
+        y = self.fc2(x)
+
+        return y
+
+
+class image_CM(torch.nn.Module):
+    """ This defines the global confusion matrix layer. It defines a (class_no x class_no) confusion matrix, we then use unsqueeze function to match the
+    size with the original pixel-wise confusion matrix layer, this is due to convenience to be compact with the existing loss function and pipeline.
+    """
+
+    def __init__(self, class_no, input_height, input_width, noisy_labels_no):
+        super(image_CM, self).__init__()
+        self.class_no = class_no
+        self.noisy_labels_no = noisy_labels_no
+        self.input_height = input_height
+        self.input_width = input_width
+        self.noisy_labels_no = noisy_labels_no
+        self.conv_layers = conv_layers_image(16)
+        self.dense_annotator = torch.nn.Linear(noisy_labels_no, 64)
+        self.dense_output = torch.nn.Linear(192, class_no ** 2)
+        self.act = torch.nn.Softplus()
+
+    def forward(self, A_id, x):
+        A_feat = self.dense_annotator(A_id)  # B, F_A
+        x = self.conv_layers(x)
+        output = self.dense_output(torch.hstack((A_feat, x)))
         output = self.act(output.view(-1, self.class_no, self.class_no))
         all_weights = output.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 1, self.input_height, self.input_width)
-        # y = self.relu(all_weights)
-        y = all_weights
+        y = all_weights.view(-1, self.class_no**2, self.input_height, self.input_width)
+        #print("shape CM image ", y.shape)
 
         return y
 
@@ -133,13 +218,18 @@ class Crowd_segmentationModel(torch.nn.Module):
         self.noisy_labels_no = len(noisy_labels)
         print("Number of annotators (model): ", self.noisy_labels_no)
         self.class_no = config['data']['class_no']
-        if config['model']['crowd_global']:
+        self.crowd_type = config['model']['crowd_type']
+        if self.crowd_type == 'global':
             print("Global crowdsourcing")
             self.crowd_layers = global_CM(self.class_no, 512, 512, self.noisy_labels_no)
-        else:
-            for i in range(self.noisy_labels_no):
-                self.spatial_cms.append(cm_layers(in_channels=16, norm='in',
-                                                  class_no=config['data']['class_no']))  # TODO: arrange in_channels
+
+        elif self.crowd_type == 'image':  # TODO: put this cases as in mode and not true/false
+            print("Image dependent crowdsourcing")
+            self.crowd_layers = image_CM(self.class_no, 512, 512, self.noisy_labels_no)
+        elif self.crowd_type == 'pixel':
+            print("Pixel dependent crowdsourcing")
+            self.crowd_layers = cm_layers(in_channels=16, norm='in',
+                                                  class_no=config['data']['class_no'], noisy_labels_no=self.noisy_labels_no)  # TODO: arrange in_channels
         self.activation = torch.nn.Softmax(dim=1)
 
     def forward(self, x, A_id=None):
@@ -147,7 +237,7 @@ class Crowd_segmentationModel(torch.nn.Module):
         x = self.seg_model.encoder(x)
         x = self.seg_model.decoder(*x)
         if A_id is not None:
-            cm = self.crowd_layers(A_id)
+            cm = self.crowd_layers(A_id, x)
         x = self.seg_model.segmentation_head(x)
         y = self.activation(x)
         return y, cm

@@ -35,7 +35,8 @@ def noisy_label_loss(pred, cms, labels, ignore_index, min_trace = False, alpha=0
 
     # b x c**2 x h x w ---> b*h*w x c x c
     cm = cms.view(b, c ** 2, h * w).permute(0, 2, 1).contiguous().view(b * h * w, c * c).view(b * h * w, c, c)
-
+    cm = cm / cm.sum(1, keepdim=True)
+    #print("loss", cm[0].sum(0))
     # normalisation along the rows:
     # print(cm.shape)
     # cm = cm / cm.sum(1, keepdim=True) # dim 1 because of rows (dim 0 is batch)
@@ -50,7 +51,8 @@ def noisy_label_loss(pred, cms, labels, ignore_index, min_trace = False, alpha=0
     pred_noisy = pred_noisy.view(b, h*w, c).permute(0, 2, 1).contiguous().view(b, c, h, w)
     #label_loss = pred_noisy[:, c, :, :] = 0
     # print(pred_noisy.shape, labels.shape)
-    loss_ce = nn.CrossEntropyLoss(reduction='mean', ignore_index=ignore_index)(pred_noisy, labels.view(b, h, w).long())
+    #loss_ce = nn.CrossEntropyLoss(reduction='mean', ignore_index=ignore_index)(pred_noisy, labels.view(b, h, w).long())
+    loss_ce = nn.NLLLoss(reduction='mean', ignore_index=ignore_index)(torch.log(pred_noisy), labels.view(b, h, w).long())
     # print("loss_current: ", loss_current)
 
     # print("annotator loss: ", loss_current)
