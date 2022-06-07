@@ -4,8 +4,11 @@ import torch.nn.functional as F
 torch.backends.cudnn.deterministic = True
 # =======================================
 
+from segmentation_models_pytorch.losses import DiceLoss, FocalLoss
 
-def noisy_label_loss(pred, cms, labels, ignore_index, min_trace = False, alpha=0.1):
+eps=1e-7
+
+def noisy_label_loss(pred, cms, labels, ignore_index, min_trace = False, alpha=0.1, loss_mode=None):
     """ This function defines the proposed trace regularised loss function, suitable for either binary
     or multi-class segmentation task. Essentially, each pixel has a confusion matrix.
     Args:
@@ -52,7 +55,13 @@ def noisy_label_loss(pred, cms, labels, ignore_index, min_trace = False, alpha=0
     #label_loss = pred_noisy[:, c, :, :] = 0
     # print(pred_noisy.shape, labels.shape)
     #loss_ce = nn.CrossEntropyLoss(reduction='mean', ignore_index=ignore_index)(pred_noisy, labels.view(b, h, w).long())
-    loss_ce = nn.NLLLoss(reduction='mean', ignore_index=ignore_index)(torch.log(pred_noisy), labels.view(b, h, w).long())
+
+    if loss_mode == 'ce':
+        loss_ce = nn.NLLLoss(reduction='mean', ignore_index=ignore_index)(torch.log(pred_noisy+eps), labels.view(b, h, w).long())
+    elif loss_mode == 'dice':
+        loss_ce = DiceLoss(ignore_index=ignore_index, from_logits=False, mode='multiclass')(pred_noisy, labels.view(b, h, w).long())
+    elif loss_mode == 'focal':
+        loss_ce = FocalLoss(reduction='mean', ignore_index=ignore_index, mode='multiclass')(pred_noisy, labels.view(b, h, w).long())
     # print("loss_current: ", loss_current)
 
     # print("annotator loss: ", loss_current)

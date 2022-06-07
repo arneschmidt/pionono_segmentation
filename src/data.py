@@ -118,7 +118,7 @@ class CustomDataset(torch.utils.data.Dataset):
             sample = self.preprocessing(image=image, mask=mask)
             image, mask = sample['image'], sample['mask']
 
-        return image, mask, self.ids[i]
+        return image, mask, self.ids[i], 0
 
     def __len__(self):
         return len(self.ids)

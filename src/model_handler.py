@@ -1,7 +1,9 @@
+import os
 import torch
 import mlflow
 import warnings
 import numpy as np
+from segmentation_models_pytorch.losses import DiceLoss, FocalLoss
 import utils.globals as globals
 from utils.saving import save_model, save_results, save_test_images, save_image_color_legend, save_crowd_images
 from utils.model_architecture import SegmentationModel
@@ -9,6 +11,8 @@ from utils.crowd_model_architecture import Crowd_segmentationModel
 from utils.loss import noisy_label_loss
 from utils.test_helpers import segmentation_scores
 from utils.logging import log_results
+
+eps=1e-7
 
 
 class ModelHandler():
@@ -20,6 +24,9 @@ class ModelHandler():
             self.annotators = annotators
         else:
             self.model = SegmentationModel()
+
+        self.loss_mode = config['model']['loss']
+
         self.model.cuda()
         if torch.cuda.is_available():
             print('Running on GPU')
@@ -41,19 +48,9 @@ class ModelHandler():
         learning_rate = config['model']['learning_rate']
         batch_s = config['model']['batch_size']
         vis_train_images = config['data']['visualize_images']['train']
-        # print(vis_train_images)
         save_image_color_legend()
 
-        """
-        if config['model']['optimizer'] == 'adam':
-            if config['data']['crowd']:
-                print("Crowd optimization")
-                optimizer = torch.optim.Adam([
-                    {'params': model.seg_model.parameters()},
-                    {'params': model.spatial_cms.parameters(), 'lr': 1e-2}
-                ], lr=learning_rate)
-        """
-
+        # Optimizer
         if config['data']['crowd']:
             optimizer = torch.optim.Adam([
                 {'params': model.seg_model.parameters()},
@@ -72,27 +69,30 @@ class ModelHandler():
 
         min_trace = config['model']['min_trace']
 
+        # Training loop
         for i in range(0, epochs):
 
             print('\nEpoch: {}'.format(i))
             model.train()
 
-            if i > 10:
+            # Stop of the warm-up period
+            if i == 5:
                 print("Minimize trace activated!")
                 min_trace = True
                 self.alpha = config['model']['alpha']
                 print("Alpha updated", self.alpha)
+                if config['data']['crowd']:
+                    optimizer = torch.optim.Adam([
+                        {'params': model.seg_model.parameters()},
+                        {'params': model.crowd_layers.parameters(), 'lr': 1e-4}
+                    ], lr=learning_rate)
 
+            # Training in batches
             for j, (images, labels, imagename, ann_ids) in enumerate(trainloader):
-                # print(images.shape, labels.shape)
-                # print(imagename)
-
-                # images =  images.permute(0,3,1,2)
-                images = images.cuda().float()  # to(device=device, dtype=torch.float32)
-                # print("labels", labels.shape)
+                # Loading data to GPU
+                images = images.cuda().float()
                 labels = labels.cuda().long()
                 ann_ids = ann_ids.cuda().float()
-                #print("Ann_IDs: ", ann_ids)
 
                 # zero the parameter gradients
                 optimizer.zero_grad()
@@ -101,30 +101,37 @@ class ModelHandler():
                     ignore_index = int(config['data']['class_no'])  # deleted class is always set to the last index
                 else:
                     ignore_index = -100  # this means no index ignored
-
                 self.ignore_index = ignore_index
-                if config['data']['crowd']:
-                    # _, labels = torch.max(labels, dim=2)
 
+                # Foward+loss (crowd or not)
+                if config['data']['crowd']:
                     _, labels = torch.max(labels, dim=1)
-                    # labels = labels.permute(1, 0, 2, 3)
-                    # labels = torch.unsqueeze(labels, dim=2)
                     y_pred, cms = model(images, ann_ids)
                     loss, loss_ce, loss_trace = noisy_label_loss(y_pred, cms, labels, ignore_index,
-                                                                 min_trace, self.alpha)
+                                                                 min_trace, self.alpha, self.loss_mode)
                 else:
-                    # forward + backward + optimize
                     _, labels = torch.max(labels, dim=1)
                     y_pred = model(images)
-                    loss = torch.nn.CrossEntropyLoss(reduction='mean', ignore_index=ignore_index, weight=class_weights)(
-                        y_pred, labels)
 
+                    if self.loss_mode == 'ce':
+                        loss = torch.nn.NLLLoss(reduction='mean', ignore_index=ignore_index, weight=class_weights)(
+                            torch.log(y_pred+eps), labels)
+                    elif self.loss_mode == 'dice':
+                        loss = DiceLoss(ignore_index=ignore_index, from_logits=False, mode='multiclass')(
+                            y_pred, labels)
+                    elif self.loss_mode == 'focal':
+                        loss = FocalLoss(reduction='mean', ignore_index=ignore_index, mode='multiclass')(
+                            y_pred, labels)
+
+                # Final prediction
                 _, y_pred_max = torch.max(y_pred[:, 0:class_no], dim=1)
 
-                loss.backward()
-                optimizer.step()
+                # Backprop
+                if not torch.isnan(loss):
+                    loss.backward()
+                    optimizer.step()
 
-                # TODO: save train in crowdsourcing
+                # Save results in training (only save for not crowd methods)
                 if j % int(config['logging']['interval']) == 0:
                     print("Iter {}/{} - batch loss : {:.4f}".format(j, len(trainloader), loss))
                     if not config['data']['crowd']:
@@ -137,36 +144,35 @@ class ModelHandler():
                                 images_save = images[k]  # .cpu().detach().numpy()
                                 save_test_images(images_save, y_pred_max_save, labels_save, imagename[k], 'train')
 
+            # Save validation results
             val_results = self.evaluate(validateloader, mode='val')  # TODO: validate crowd
             log_results(val_results, mode='val', step=int((i + 1) * len(trainloader) * batch_s))
             mlflow.log_metric('finished_epochs', i + 1, int((i + 1) * len(trainloader) * batch_s))
 
+            # Save model
             metric_for_saving = val_results['macro_dice']
-            if max_score < metric_for_saving:
+            if max_score < metric_for_saving and i > 10:
                 save_model(model)
                 max_score = metric_for_saving
 
+            # LR decay
             if i > config['model']['lr_decay_after_epoch']:
                 for g in optimizer.param_groups:
                     g['lr'] = g['lr'] / (1 + config['model']['lr_decay_param'])
 
+            # Show annotator matrix
             if config['data']['crowd']:
                 _,  ann_id = torch.max(ann_ids, dim=1)
                 for ann_ix, cm in enumerate(cms):
-                    #print("BBB", cm.shape)
                     cm = cm.view(5,5,512,512)
-                    #print("AAA", cm.shape)
                     cm_ = cm[:,:,100,100]
-                    #print(cm_.sum(1))
                     cm_ = cm_/cm_.sum(0)
-                    #print("matrix", cm_.sum(0))
-                    #softm = torch.nn.Softmax(dim=1)
-                    #cm_ = softm(cm_)
                     print("Annotators", ann_id)
-                    print("CM ", ann_id[ann_ix].cpu().detach().numpy()+1, ": ", cm_)
-                    # save_confusion_matrix(ann_ix, cm_)
+                    print("CM ", ann_id[ann_ix].cpu().detach().numpy()+1, ": ", cm_.cpu().detach().numpy())
+
+        # Final evaluation of crowd
         if config['data']['crowd']:
-            self.evaluate_crowd(trainloader, mode='train', annotators=self.annotators)
+            self.evaluate_crowd(trainloader, mode='train')
 
     def test(self, testloader):
         save_image_color_legend()
@@ -178,8 +184,16 @@ class ModelHandler():
         config = globals.config
         class_no = config['data']['class_no']
         vis_images = config['data']['visualize_images'][mode]
-        # print("vis_images", vis_images)
-        model = self.model
+
+        if mode=='test':
+            print("Testing the best model")
+            model_dir = 'models'
+            dir = os.path.join(globals.config['logging']['experiment_folder'], model_dir)
+            model_path = os.path.join(dir, 'best_model.pth')
+            model = torch.load(model_path)
+        else:
+            model = self.model
+
         device = self.device
         model.eval()
 
@@ -187,7 +201,7 @@ class ModelHandler():
         preds = []
 
         with torch.no_grad():
-            for j, (test_img, test_label, test_name) in enumerate(evaluatedata):
+            for j, (test_img, test_label, test_name, _) in enumerate(evaluatedata):
                 test_img = test_img.to(device=device, dtype=torch.float32)
                 if globals.config['data']['crowd']:
                     test_pred, _ = model(test_img)
@@ -200,11 +214,10 @@ class ModelHandler():
 
                 preds.append(test_pred_np.astype(np.int8).copy().flatten())
                 labels.append(test_label.astype(np.int8).copy().flatten())
-                # print(test_name)
+
                 for k in range(len(test_name)):
                     if test_name[k] in vis_images or vis_images == 'all':
-                        img = test_img[k]  # .cpu().detach().numpy()
-                        # print(test_name[k])
+                        img = test_img[k]
                         save_test_images(img, test_pred_np[k], test_label[k], test_name[k], mode)
 
             preds = np.concatenate(preds, axis=0, dtype=np.int8).flatten()
@@ -216,12 +229,16 @@ class ModelHandler():
             print(results)
             return results
 
-    def evaluate_crowd(self, evaluatedata, mode='train', annotators=None):
+    def evaluate_crowd(self, evaluatedata, mode='train'):
         config = globals.config
         class_no = config['data']['class_no']
         vis_images = config['data']['visualize_images'][mode]
-        # print("vis_images", vis_images)
-        model = self.model
+        print("Testing the best model for crowds")
+        model_dir = 'models'
+        dir = os.path.join(globals.config['logging']['experiment_folder'], model_dir)
+        model_path = os.path.join(dir, 'best_model.pth')
+        model = torch.load(model_path)
+
         device = self.device
         model.eval()
 
@@ -236,55 +253,40 @@ class ModelHandler():
                 test_pred_np = np.argmax(test_pred_np, axis=1)
 
                 _, test_label = torch.max(test_label, dim=1)
-                # test_label = test_label.permute(1, 0, 2, 3)
                 test_label = test_label.cpu().detach().numpy()
-                # print(test_pred.size())
+
                 b, c, h, w = test_pred.size()
 
-                # print(cm.shape)
                 pred_noisy = test_pred.view(b, c, h * w).permute(0, 2, 1).contiguous().view(b * h * w, c, 1)
 
                 cm = cm.view(b, c ** 2, h * w).permute(0, 2, 1).contiguous().view(b * h * w, c * c).view(
                     b * h * w, c, c)
+                cm = cm / cm.sum(1, keepdim=True) # normalize cm
 
-                # normalisation along the rows:
-                # print(cm.shape)
-                # cm = cm / cm.sum(1, keepdim=True)
-                # print(cm[0])
-
-                # matrix multiplication to calculate the predicted noisy segmentation:
-                # cm: b*h*w x c x c
-                # pred_noisy: b*h*w x c x 1
-                pred_noisy = torch.bmm(cm, pred_noisy).view(b * h * w, c)
+                pred_noisy = torch.bmm(cm, pred_noisy).view(b * h * w, c) # prediction annotator
                 pred_noisy = pred_noisy.view(b, h * w, c).permute(0, 2, 1).contiguous().view(b, c, h, w)
-                # print("shape noisy1", pred_noisy)
-                # print("shape noisy2", pred_noisy.size())
+
                 _, pred_noisy = torch.max(pred_noisy[:, 0:class_no], dim=1)
                 pred_noisy_np = pred_noisy.cpu().detach().numpy()
-                # print("shape noisy3", pred_noisy)
-                # print("shape noisy4", pred_noisy.size())
-                pred_noisy_list.append(pred_noisy.cpu().detach().numpy().astype(np.int8).copy().flatten())
-                # all_preds_noisy.append(pred_noisy_list)  # B x L x 512 x 512
 
-                # print(test_name)
+                pred_noisy_list.append(pred_noisy.cpu().detach().numpy().astype(np.int8).copy().flatten())
+
+                cm = cm.view(b, h*w, c, c)
+
+                config = globals.config
+                if config['model']['crowd_type'] == 'pixel':
+                    cm = cm.mean(1)
+                    cm = cm/cm.sum(1, keepdim=True)
+
+                else:
+                    cm = cm[:,0,:,:]
                 _, ann = torch.max(ann_id, dim=1)
                 ann = ann.cpu().detach().numpy()
                 for k in range(len(test_name)):
                     if test_name[k] in vis_images or vis_images == 'all':
                         img = test_img[k]
                         save_crowd_images(img, test_pred_np[k], pred_noisy_np[k], test_label[k],
-                                          test_name[k], self.annotators[ann[k]])
-
-            """" TODO: metrics for annotators
-            preds = np.concatenate(preds, axis=0, dtype=np.int8).flatten()
-            labels = np.concatenate(labels, axis=0, dtype=np.int8).flatten()
-
-            results = self.get_results(preds, labels)
-
-            print('RESULTS for ' + mode)
-            print(results)
-            return results
-            """
+                                          test_name[k], self.annotators[ann[k]], cm[k])
 
     def get_results(self, pred, label):
         config = globals.config

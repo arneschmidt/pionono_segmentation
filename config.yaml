@@ -3,10 +3,11 @@ data:
 
 model:
   min_trace: False
-  crowd_type: image # pixel, image, global
+  crowd_type: pixel # pixel, image, global
   identity_reg: False
   alpha: 0.4
-  epochs: 100
+  epochs: 1
+  loss: ce
   batch_size: 5
   optimizer: adam # sgd_mom, adam
   learning_rate: 0.0001

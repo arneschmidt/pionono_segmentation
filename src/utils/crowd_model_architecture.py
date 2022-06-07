@@ -87,10 +87,11 @@ class cm_layers(torch.nn.Module):
         self.conv_2 = double_conv(in_channels=in_channels, out_channels=in_channels, norm=norm, step=1)
         # self.conv_last = torch.nn.Conv2d(in_channels, class_no ** 2, 1, bias=True)
         self.class_no = class_no
-        self.dense = torch.nn.Linear(66, 25)
+        self.dense = torch.nn.Linear(80, 25)
         self.dense2 = torch.nn.Linear(25, 25)
-        self.dense_annotator = torch.nn.Linear(noisy_labels_no, noisy_labels_no)
-        self.dense_classes = torch.nn.Linear(noisy_labels_no, 50)
+        self.dense_annotator = torch.nn.Linear(noisy_labels_no, 64)
+        # self.dense_classes = torch.nn.Linear(noisy_labels_no, 50)
+        self.norm = torch.nn.BatchNorm2d(80, affine=True)
         self.relu = torch.nn.Softplus()
         self.act = torch.nn.Softmax(dim=3)
 
@@ -101,18 +102,20 @@ class cm_layers(torch.nn.Module):
         #y = self.relu(self.conv_last(self.conv_2(self.conv_1(x))))
         y = self.conv_2(self.conv_1(x))
         A_id = self.relu(self.dense_annotator(A_id))  # B, F_A
-        A_id = self.relu(self.dense_classes(A_id))
         #print("A_id", A_id.shape)
         #print("image features", y.shape)
         A_id = A_id.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 512, 512)
         #print("A_id", A_id.shape)
 
         y = torch.cat((A_id, y), dim=1)
+        #print(y.shape)
+        y = self.norm(y)
         #print("y", y.shape)
         y = y.permute(0, 2, 3, 1)
-        y = self.dense2(self.relu(self.dense(y)))
+        y = self.relu((self.dense(y)))
+        y = self.dense2(y)
         
-        y = self.act(y.view(-1, 512, 512, self.class_no, self.class_no))
+        y = self.relu(y.view(-1, 512, 512, self.class_no, self.class_no))
         y = y.view(-1, 512, 512, self.class_no ** 2).permute(0,3,1,2)
 
         return y
@@ -162,10 +165,10 @@ class conv_layers_image(torch.nn.Module):
         self.pool = torch.nn.MaxPool2d(kernel_size=2, stride=2)
         self.conv_bn = torch.nn.BatchNorm2d(8)
         self.conv_bn2 = torch.nn.BatchNorm2d(4)
-        self.fc_bn = torch.nn.BatchNorm1d(256)
+        self.fc_bn = torch.nn.BatchNorm1d(128)
         self.flatten = torch.nn.Flatten()
-        self.fc1 = torch.nn.Linear(in_features=4096, out_features=256)
-        self.fc2 = torch.nn.Linear(in_features=256, out_features=128)
+        self.fc1 = torch.nn.Linear(in_features=4096, out_features=128)
+        self.fc2 = torch.nn.Linear(in_features=128, out_features=64)
 
     def forward(self, x):
         x = self.pool(self.relu(self.conv_bn(self.conv(x))))
@@ -194,13 +197,15 @@ class image_CM(torch.nn.Module):
         self.noisy_labels_no = noisy_labels_no
         self.conv_layers = conv_layers_image(16)
         self.dense_annotator = torch.nn.Linear(noisy_labels_no, 64)
-        self.dense_output = torch.nn.Linear(192, class_no ** 2)
+        self.dense_output = torch.nn.Linear(128, class_no ** 2)
+        self.norm = torch.nn.BatchNorm1d(class_no ** 2)
         self.act = torch.nn.Softplus()
 
     def forward(self, A_id, x):
         A_feat = self.dense_annotator(A_id)  # B, F_A
         x = self.conv_layers(x)
         output = self.dense_output(torch.hstack((A_feat, x)))
+        output = self.norm(output)
         output = self.act(output.view(-1, self.class_no, self.class_no))
         all_weights = output.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 1, self.input_height, self.input_width)
         y = all_weights.view(-1, self.class_no**2, self.input_height, self.input_width)

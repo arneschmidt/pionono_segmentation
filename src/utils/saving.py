@@ -7,6 +7,9 @@ import mlflow
 import matplotlib.pyplot as plt
 import numpy as np
 from torchvision.utils import save_image
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 import utils.globals as globals
 
@@ -42,7 +45,7 @@ def save_test_images(test_imgs:torch.Tensor, test_preds: np.array, test_labels: 
     mlflow.log_artifacts(dir, visual_dir)
 
 # TODO: funcion que guarde bien el crowdsourcing
-def save_crowd_images(test_imgs:torch.Tensor, gt_pred: np.array, test_preds: np.array, test_labels: np.array, test_name: np.array, annotator):
+def save_crowd_images(test_imgs:torch.Tensor, gt_pred: np.array, test_preds: np.array, test_labels: np.array, test_name: np.array, annotator, cm):
     visual_dir = 'qualitative_results/' + "train_crowd"
     dir = os.path.join(globals.config['logging']['experiment_folder'], visual_dir)
     os.makedirs(dir, exist_ok=True)
@@ -67,7 +70,14 @@ def save_crowd_images(test_imgs:torch.Tensor, gt_pred: np.array, test_preds: np.
     test_label_rgb = convert_classes_to_rgb(test_labels, h, w)
     out_path = os.path.join(dir, annotator + '_gt_' + test_name)
     imageio.imsave(out_path, test_label_rgb)
+
+    cm = cm.detach().cpu().numpy()
+    plt.matshow(cm)
+    out_path = os.path.join(dir, annotator + '_matrix_' + test_name)
+    plt.savefig(out_path)
+
     mlflow.log_artifacts(dir, visual_dir)
+
 
 def save_image_color_legend():
     visual_dir = 'qualitative_results/'
