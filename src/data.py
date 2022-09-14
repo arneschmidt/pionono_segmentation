@@ -1,6 +1,7 @@
 import os
 import torch
 import numpy as np
+import pandas as pd
 import cv2
 import random
 
@@ -89,7 +90,11 @@ class CustomDataset(torch.utils.data.Dataset):
             augmentation=None,
             preprocessing=None
     ):
-        self.ids = os.listdir(images_dir)
+        if globals.config['data']['sr_experiment']:
+            names = pd.read_csv(images_dir + globals.config['data']['sr_path'] + 'test.csv').values.tolist()
+            self.ids = [x[0] for x in names]
+        else:
+            self.ids = os.listdir(images_dir)
         self.images_fps = [os.path.join(images_dir, image_id) for image_id in self.ids]
         self.masks_fps = [os.path.join(masks_dir, image_id) for image_id in self.ids]
         self.class_no = globals.config['data']['class_no']
@@ -147,9 +152,14 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
             images_dir,
             masks_dir,
             augmentation=None,
-            preprocessing=None
+            preprocessing=None,
+            _set = None
     ):
-        self.ids = os.listdir(images_dir)
+        if globals.config['data']['sr_experiment']:
+            names = pd.read_csv(images_dir + globals.config['data']['sr_path'] + 'train.csv').values.tolist()
+            self.ids = [x[0] for x in names]
+        else:
+            self.ids = os.listdir(images_dir)
         self.images_fps = [os.path.join(images_dir, image_id) for image_id in self.ids]
         annotators = os.listdir(masks_dir)
         self.annotators = [e for e in annotators if e not in ('expert', 'MV', 'STAPLE')]
@@ -353,6 +363,8 @@ def get_data_supervised():
         train_dataset = CustomDataset(train_image_folder, train_label_folder, augmentation=get_training_augmentation(),
                                       preprocessing = preprocessing)
     validate_dataset = CustomDataset(val_image_folder, val_label_folder, preprocessing = preprocessing)
+
+
     test_dataset = CustomDataset(test_image_folder, test_label_folder, preprocessing = preprocessing)
 
     trainloader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
