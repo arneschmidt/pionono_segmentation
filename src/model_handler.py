@@ -188,8 +188,6 @@ class ModelHandler():
                     print("Annotators", ann_id)
                     print("CM ", ann_id[ann_ix].cpu().detach().numpy()+1, ": ", cm_.cpu().detach().numpy())
 
-        if globals.config['data']['sr_experiment']:
-            self.evaluate_sr(testloader)
 
         # Final evaluation of crowd
         if config['data']['crowd'] and config['model']['crowd_type']!='prob-unet':

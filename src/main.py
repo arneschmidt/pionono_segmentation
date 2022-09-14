@@ -18,7 +18,7 @@ def main():
     print(os.curdir)
     #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
     #os.environ["CUDA_VISIBLE_DEVICES"] = str(3)
-    # os.environ['CUDA_LAUNCH_BLOCKING'] = str(1)
+    #os.environ['CUDA_LAUNCH_BLOCKING'] = str(1)
 
     start_logging()
 
@@ -29,6 +29,8 @@ def main():
     model_handler = ModelHandler(annotators)
     model_handler.train(trainloader, validateloader)
     model_handler.test(testloader)
+    if globals.config['data']['sr_experiment']:
+        model_handler.evaluate_sr(testloader)
 
 
 if __name__ == "__main__":
