@@ -3,7 +3,8 @@ data:
 
 model:
   min_trace: False
-  crowd_type: pixel # pixel, image, global
+  seed: 12
+  crowd_type: prob-unet # pixel, image, global
   identity_reg: False
   alpha: 0.4
   epochs: 1

@@ -3,10 +3,12 @@ import torch
 import mlflow
 import warnings
 import numpy as np
+from Probabilistic_Unet_Pytorch.probabilistic_unet import ProbabilisticUnet
 from segmentation_models_pytorch.losses import DiceLoss, FocalLoss
 import utils.globals as globals
 from utils.saving import save_model, save_results, save_test_images, save_image_color_legend, save_crowd_images
 from utils.model_architecture import SegmentationModel
+from Probabilistic_Unet_Pytorch.utils import l2_regularisation
 from utils.crowd_model_architecture import Crowd_segmentationModel
 from utils.loss import noisy_label_loss
 from utils.test_helpers import segmentation_scores
@@ -18,8 +20,11 @@ eps=1e-7
 class ModelHandler():
     def __init__(self, annotators):
         config = globals.config
-        if config['data']['crowd']:
+        if config['model']['crowd_type'] == 'prob-unet':
+            self.model = ProbabilisticUnet(3, config['data']['class_no'])
+        elif config['data']['crowd']:
             self.model = Crowd_segmentationModel(annotators)
+            # self.alpha = 1
             self.alpha = 1
             self.annotators = annotators
         else:
@@ -51,7 +56,7 @@ class ModelHandler():
         save_image_color_legend()
 
         # Optimizer
-        if config['data']['crowd']:
+        if config['data']['crowd'] and config['model']['crowd_type']!='prob-unet':
             optimizer = torch.optim.Adam([
                 {'params': model.seg_model.parameters()},
                 {'params': model.crowd_layers.parameters(), 'lr': 1e-3}
@@ -76,12 +81,17 @@ class ModelHandler():
             model.train()
 
             # Stop of the warm-up period
-            if i == 5:
+            if i == 5: #10 for cr_image_dice // 5 rest of the methods
                 print("Minimize trace activated!")
                 min_trace = True
                 self.alpha = config['model']['alpha']
                 print("Alpha updated", self.alpha)
-                if config['data']['crowd']:
+                # if config['data']['crowd'] and config['model']['crowd_type']!='prob-unet':
+                #     optimizer = torch.optim.Adam([
+                #         {'params': model.seg_model.parameters()},
+                #         {'params': model.crowd_layers.parameters(), 'lr': 1e-4}
+                #     ], lr=learning_rate)
+                if config['data']['crowd'] and config['model']['crowd_type']!='prob-unet':
                     optimizer = torch.optim.Adam([
                         {'params': model.seg_model.parameters()},
                         {'params': model.crowd_layers.parameters(), 'lr': 1e-4}
@@ -104,7 +114,15 @@ class ModelHandler():
                 self.ignore_index = ignore_index
 
                 # Foward+loss (crowd or not)
-                if config['data']['crowd']:
+                if config['model']['crowd_type'] == 'prob-unet':
+                    _, labels = torch.max(labels, dim=1)
+                    labels = labels[:,None,:,:]
+                    model.forward(images, labels, training=True)
+                    elbo = model.elbo(labels)
+                    reg_loss = l2_regularisation(model.posterior) + l2_regularisation(model.prior) + l2_regularisation(
+                        model.fcomb.layers)
+                    loss = -elbo + 1e-5 * reg_loss
+                elif config['data']['crowd']:
                     _, labels = torch.max(labels, dim=1)
                     y_pred, cms = model(images, ann_ids)
                     loss, loss_ce, loss_trace = noisy_label_loss(y_pred, cms, labels, ignore_index,
@@ -124,7 +142,8 @@ class ModelHandler():
                             y_pred, labels)
 
                 # Final prediction
-                _, y_pred_max = torch.max(y_pred[:, 0:class_no], dim=1)
+                if not config['data']['crowd']:
+                    _, y_pred_max = torch.max(y_pred[:, 0:class_no], dim=1)
 
                 # Backprop
                 if not torch.isnan(loss):
@@ -161,7 +180,7 @@ class ModelHandler():
                     g['lr'] = g['lr'] / (1 + config['model']['lr_decay_param'])
 
             # Show annotator matrix
-            if config['data']['crowd']:
+            if config['data']['crowd'] and config['model']['crowd_type']!='prob-unet':
                 _,  ann_id = torch.max(ann_ids, dim=1)
                 for ann_ix, cm in enumerate(cms):
                     cm = cm.view(5,5,512,512)
@@ -171,7 +190,7 @@ class ModelHandler():
                     print("CM ", ann_id[ann_ix].cpu().detach().numpy()+1, ": ", cm_.cpu().detach().numpy())
 
         # Final evaluation of crowd
-        if config['data']['crowd']:
+        if config['data']['crowd'] and config['model']['crowd_type']!='prob-unet':
             self.evaluate_crowd(trainloader, mode='train')
 
     def test(self, testloader):
@@ -203,7 +222,10 @@ class ModelHandler():
         with torch.no_grad():
             for j, (test_img, test_label, test_name, _) in enumerate(evaluatedata):
                 test_img = test_img.to(device=device, dtype=torch.float32)
-                if globals.config['data']['crowd']:
+                if config['model']['crowd_type'] == 'prob-unet':
+                    model.forward(test_img, None, training=False)
+                    test_pred = model.sample(testing=True)
+                elif globals.config['data']['crowd']:
                     test_pred, _ = model(test_img)
                 else:
                     test_pred = model(test_img)
