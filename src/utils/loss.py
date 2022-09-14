@@ -21,13 +21,10 @@ def noisy_label_loss(pred, cms, labels, ignore_index, min_trace = False, alpha=0
         main_loss (double): main segmentation loss
         regularisation (double): regularisation loss
     """
-    #main_loss = 0.0
-    #regularisation = 0.0
     b, c, h, w = pred.size()
 
     # normalise the segmentation output tensor along dimension 1
     pred_norm = pred
-    #print(pred.shape)
 
     # b x c x h x w ---> b*h*w x c x 1
     pred_norm = pred_norm.view(b, c, h*w).permute(0, 2, 1).contiguous().view(b*h*w, c, 1)
@@ -38,23 +35,13 @@ def noisy_label_loss(pred, cms, labels, ignore_index, min_trace = False, alpha=0
 
     # b x c**2 x h x w ---> b*h*w x c x c
     cm = cms.view(b, c ** 2, h * w).permute(0, 2, 1).contiguous().view(b * h * w, c * c).view(b * h * w, c, c)
-    cm = cm / cm.sum(1, keepdim=True)
-    #print("loss", cm[0].sum(0))
-    # normalisation along the rows:
-    # print(cm.shape)
-    # cm = cm / cm.sum(1, keepdim=True) # dim 1 because of rows (dim 0 is batch)
-    #cm = torch.nn.Softmax(dim=1)(cm)
-    # print(cm[0])
-
+    cm = cm / cm.sum(1, keepdim=True) # normalization
     # matrix multiplication to calculate the predicted noisy segmentation:
     # cm: b*h*w x c x c
     # pred_noisy: b*h*w x c x 1
     # print(cm.shape, pred_norm.shape)
     pred_noisy = torch.bmm(cm, pred_norm).view(b*h*w, c)
     pred_noisy = pred_noisy.view(b, h*w, c).permute(0, 2, 1).contiguous().view(b, c, h, w)
-    #label_loss = pred_noisy[:, c, :, :] = 0
-    # print(pred_noisy.shape, labels.shape)
-    #loss_ce = nn.CrossEntropyLoss(reduction='mean', ignore_index=ignore_index)(pred_noisy, labels.view(b, h, w).long())
 
     if loss_mode == 'ce':
         loss_ce = nn.NLLLoss(reduction='mean', ignore_index=ignore_index)(torch.log(pred_noisy+eps), labels.view(b, h, w).long())
@@ -62,23 +49,14 @@ def noisy_label_loss(pred, cms, labels, ignore_index, min_trace = False, alpha=0
         loss_ce = DiceLoss(ignore_index=ignore_index, from_logits=False, mode='multiclass')(pred_noisy, labels.view(b, h, w).long())
     elif loss_mode == 'focal':
         loss_ce = FocalLoss(reduction='mean', ignore_index=ignore_index, mode='multiclass')(pred_noisy, labels.view(b, h, w).long())
-    # print("loss_current: ", loss_current)
 
-    # print("annotator loss: ", loss_current)
-
+    # regularization
     regularisation = torch.trace(torch.transpose(torch.sum(cm, dim=0), 0, 1)).sum() / (b * h * w)
-
-    # regularisation = alpha*(regularisation/len(labels))
     regularisation = alpha * regularisation
-    # regularisation = 0
-    # main_loss = main_loss/len(labels) # TODO: automatize this
 
     if min_trace:
         loss = loss_ce + regularisation
     else:
         loss = loss_ce - regularisation
-
-    # loss = loss_ce - regularisation
-    # loss = main_loss - regularisation
 
     return loss, loss_ce, regularisation

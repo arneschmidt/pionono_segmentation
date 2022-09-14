@@ -20,18 +20,21 @@ eps=1e-7
 class ModelHandler():
     def __init__(self, annotators):
         config = globals.config
+
+        # architecture
         if config['model']['crowd_type'] == 'prob-unet':
             self.model = ProbabilisticUnet(3, config['data']['class_no'])
         elif config['data']['crowd']:
             self.model = Crowd_segmentationModel(annotators)
-            # self.alpha = 1
             self.alpha = 1
             self.annotators = annotators
         else:
             self.model = SegmentationModel()
 
+        # loss
         self.loss_mode = config['model']['loss']
 
+        #GPU
         self.model.cuda()
         if torch.cuda.is_available():
             print('Running on GPU')
@@ -86,11 +89,7 @@ class ModelHandler():
                 min_trace = True
                 self.alpha = config['model']['alpha']
                 print("Alpha updated", self.alpha)
-                # if config['data']['crowd'] and config['model']['crowd_type']!='prob-unet':
-                #     optimizer = torch.optim.Adam([
-                #         {'params': model.seg_model.parameters()},
-                #         {'params': model.crowd_layers.parameters(), 'lr': 1e-4}
-                #     ], lr=learning_rate)
+                
                 if config['data']['crowd'] and config['model']['crowd_type']!='prob-unet':
                     optimizer = torch.optim.Adam([
                         {'params': model.seg_model.parameters()},
