@@ -19,15 +19,15 @@ def get_training_augmentation():
         train_transform = [
             albu.HorizontalFlip(p=0.5),
             albu.VerticalFlip(p=0.5),
-            albu.RandomRotate90(p=0.5),
-
             albu.Blur(blur_limit=aug_config['gaussian_blur_kernel'], p=0.5),
             albu.RandomBrightnessContrast(brightness_limit=aug_config['brightness_limit'],
                                           contrast_limit=aug_config['contrast_limit'],
-                                          p=0.5),
+                                          p=1.0),
             albu.HueSaturationValue(hue_shift_limit=aug_config['hue_shift_limit'],
                                     sat_shift_limit=aug_config['sat_shift_limit'],
-                                    p=0.5)
+                                    p=1.0),
+            albu.Affine(scale=(0.95, 1.05), translate_percent=(-0.05, 0.05), shear=[-5, 5],
+                        rotate=[-360, 360], interpolation=cv2.INTER_CUBIC, cval=[255, 255, 255], cval_mask=4, p=1.0)
         ]
         composed_transform = albu.Compose(train_transform)
     else:
@@ -90,11 +90,11 @@ class CustomDataset(torch.utils.data.Dataset):
             augmentation=None,
             preprocessing=None
     ):
-        if globals.config['data']['sr_experiment']:
-            names = pd.read_csv(images_dir + globals.config['data']['sr_path'] + 'test.csv').values.tolist()
-            self.ids = [x[0] for x in names]
-        else:
-            self.ids = os.listdir(images_dir)
+        img_ids = os.listdir(images_dir)
+        mask_ids = os.listdir(masks_dir)
+        self.ids = np.intersect1d(img_ids, mask_ids)
+        if self.ids.size == 0:
+            raise Exception('Empty data generator because no images with masks were found.')
         self.images_fps = [os.path.join(images_dir, image_id) for image_id in self.ids]
         self.masks_fps = [os.path.join(masks_dir, image_id) for image_id in self.ids]
         self.class_no = globals.config['data']['class_no']
@@ -108,15 +108,19 @@ class CustomDataset(torch.utils.data.Dataset):
         image = cv2.imread(self.images_fps[i])
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         mask = cv2.imread(self.masks_fps[i], 0)
+        if mask is None:
+            raise Exception('Empty mask! Path: ' + self.masks_fps[i])
+
+        if self.augmentation:
+            sample = self.augmentation(image=image, mask=mask)
+            image, mask = sample['image'], sample['mask']
 
         # extract certain classes from mask (e.g. cars)
         masks = [(mask == v) for v in self.class_values]
         mask = np.stack(masks, axis=-1).astype('float')
 
         # apply augmentations
-        if self.augmentation:
-            sample = self.augmentation(image=image, mask=mask)
-            image, mask = sample['image'], sample['mask']
+
 
         # apply preprocessing
         if self.preprocessing:
@@ -180,8 +184,6 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
             self.ignore_index = int(self.class_no) # deleted class is always set to the last index
         else:
             self.ignore_index = -100 # this means no index ignored
-
-
 
     def __getitem__(self, i):
 
@@ -373,4 +375,5 @@ def get_data_supervised():
     testloader = data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=batch_size,
                                  drop_last=False)
 
+    next(iter(trainloader))
     return trainloader, validateloader, testloader, annotators

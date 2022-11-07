@@ -29,8 +29,8 @@ def main():
     model_handler = ModelHandler(annotators)
     model_handler.train(trainloader, validateloader)
     model_handler.test(testloader)
-    if globals.config['data']['sr_experiment']:
-        model_handler.evaluate_sr(testloader)
+    # if globals.config['data']['sr_experiment']:
+    #     model_handler.evaluate_sr(testloader)
 
 
 if __name__ == "__main__":

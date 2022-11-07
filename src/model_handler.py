@@ -377,9 +377,13 @@ class ModelHandler():
         class_no = config['data']['class_no']
         class_names = globals.config['data']['class_names']
 
-        metrics_names = ['macro_dice', 'micro_dice', 'miou', 'accuracy']
+        if globals.config['data']['ignore_last_class_only_for_testing']:
+            class_no = class_no-1
+
+        metrics_names = ['macro_dice', 'micro_dice', 'miou', 'accuracy', 'macro_f1', 'cohens_kappa']
         for class_id in range(class_no):
             metrics_names.append('dice_class_' + str(class_id) + '_' + class_names[class_id])
+            metrics_names.append('f1_class_' + str(class_id) + '_' + class_names[class_id])
 
         if torch.is_tensor(pred):
             pred = pred.cpu().detach().numpy().copy().flatten()

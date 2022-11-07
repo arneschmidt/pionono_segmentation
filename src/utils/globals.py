@@ -2,6 +2,7 @@ import collections
 import yaml
 import os
 import warnings
+import shutil
 
 config = {}
 
@@ -48,3 +49,11 @@ def init_global_config(args):
         warnings.warn("No experiment folder was given. Use ./output folder to store experiment results.")
         config['logging']['experiment_folder'] = out_dir
         config['logging']['run_name'] = 'default'
+
+    for f in os.listdir(config['logging']['experiment_folder']):
+        path = os.path.join(config['logging']['experiment_folder'], f)
+
+        if os.path.isfile(path) and f != 'exp_config.yaml':
+            os.remove(path)
+        elif os.path.isdir(path):
+            shutil.rmtree(os.path.join(config['logging']['experiment_folder'], f))

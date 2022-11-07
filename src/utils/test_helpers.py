@@ -1,7 +1,7 @@
 import numpy as np
 import utils.globals as globals
 
-from sklearn.metrics import accuracy_score, jaccard_score
+from sklearn.metrics import accuracy_score, jaccard_score, f1_score, cohen_kappa_score
 
 def dice_coef_binary(y_true, y_pred):
     intersection = np.sum(y_true * y_pred)
@@ -27,6 +27,7 @@ def segmentation_scores(label_trues, label_preds, metric_names):
     class_no = globals.config['data']['class_no']
     class_names = globals.config['data']['class_names']
     ignore_last_class = globals.config['data']['ignore_last_class']
+    ignore_last_class_only_for_testing = globals.config['data']['ignore_last_class_only_for_testing']
 
     assert len(label_trues) == len(label_preds)
 
@@ -35,11 +36,15 @@ def segmentation_scores(label_trues, label_preds, metric_names):
     label_preds = np.array(label_preds, dtype='int8')
     label_trues = np.array(label_trues, dtype='int8')
 
-    if ignore_last_class:
+    if ignore_last_class or ignore_last_class_only_for_testing:
         label_preds = label_preds[label_trues!=class_no]
         label_trues = label_trues[label_trues!=class_no]
+        nc_class = np.ones_like(label_preds)
+        label_preds = np.where(label_preds==class_no, nc_class, label_preds)
 
     dice_per_class = dice_coef_multilabel(label_trues, label_preds)
+    results['macro_f1'] = f1_score(label_trues, label_preds, labels=np.arange(class_no), average='macro')
+    f1_score_classwise = f1_score(label_trues, label_preds, labels=np.arange(class_no), average=None)
 
     results['macro_dice'] = dice_per_class.mean()
 
@@ -49,9 +54,11 @@ def segmentation_scores(label_trues, label_preds, metric_names):
 
     for class_id in range(class_no):
         results['dice_class_' + str(class_id) + '_' + class_names[class_id]] = dice_per_class[class_id]
+        results['f1_class_' + str(class_id) + '_' + class_names[class_id]] = f1_score_classwise[class_id]
 
     results['accuracy'] = accuracy_score(label_trues, label_preds)
     results['miou'] = jaccard_score(label_trues, label_preds, average="macro") # same as IoU!
+    results['cohens_kappa'] = cohen_kappa_score(label_trues, label_preds, weights=None)
 
     for metric in metric_names:
         assert metric in results.keys()
