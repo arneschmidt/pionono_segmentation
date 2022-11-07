@@ -1,18 +1,18 @@
 data:
-  dataset_config: dummy_experiment/dummy_crowd_dataset_config.yaml
+  dataset_config: dataset_dependent/gleason19/dataset_config.yaml
 
 model:
   min_trace: False
-  seed: 12
-  crowd_type: prob-unet # pixel, image, global
+  seed: 0
+  crowd_type: unet #prob-unet # pixel, image, global
   identity_reg: False
   alpha: 0.4
-  epochs: 1
+  epochs: 100
   loss: ce
   batch_size: 5
   optimizer: adam # sgd_mom, adam
   learning_rate: 0.0001
-  lr_decay_after_epoch: 50
+  lr_decay_after_epoch: 10
   lr_decay_param: 0.1
   backbone: unet # unet, linknet
   encoder:
@@ -23,4 +23,4 @@ model:
 
 logging:
   interval: 10
-  mlruns_folder: /work/work_mik/mlflow_server # http://127.0.0.1:5002
+  mlruns_folder: /work/work_arne/mlflow_server # http://127.0.0.1:5002
