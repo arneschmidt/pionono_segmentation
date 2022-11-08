@@ -10,34 +10,34 @@ data:
   path: /data/BasesDeDatos/Gleason_2019/resized_dataset_1024/
   train:
     images: Crossval0/train
-    masks: Maps/Maps6_T
+    masks: Maps/Majority_Voting
   val:
     images: Crossval0/val
-    masks: Maps/Maps6_T
+    masks: Maps/Majority_Voting
   test:
     images: Crossval0/val
-    masks: Maps/Maps6_T
+    masks: Maps/Majority_Voting
   visualize_images:
     train:
-      - 'slide001_core004.png'
-      - 'slide001_core007.png'
-      - 'slide001_core009.png'
-      - 'slide001_core065.png'
-      - 'slide002_core074.png'
-      - 'slide005_core038.png'
-      - 'slide007_core005.png'
-      - 'slide007_core005.png'
+      - 'slide001_core005.png'
+      - 'slide001_core011.png'
+      - 'slide001_core146.png'
+      - 'slide001_core156.png'
+      - 'slide002_core033.png'
+      - 'slide002_core050.png'
+      - 'slide002_core072.png'
+      - 'slide005_core075.png'
       - 'slide007_core146.png'
     val:
-      - 'slide001_core020.png'
-      - 'slide001_core143.png'
-      - 'slide005_core028.png'
-      - 'slide005_core107.png'
+      - 'slide001_core003.png'
+      - 'slide002_core025.png'
+      - 'slide005_core058.png'
+      - 'slide007_core005.png'
     test:
-      - 'slide001_core020.png'
-      - 'slide001_core143.png'
-      - 'slide005_core028.png'
-      - 'slide005_core107.png'
+      - 'slide001_core003.png'
+      - 'slide002_core025.png'
+      - 'slide005_core058.png'
+      - 'slide007_core005.png'
   normalization: False
   augmentation:
     use_augmentation: True # switch everything off and on, if True automatically flips and 90 degree rotations are used in this case
