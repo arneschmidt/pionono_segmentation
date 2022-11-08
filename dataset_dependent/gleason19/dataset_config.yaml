@@ -30,14 +30,26 @@ data:
       - 'slide007_core146.png'
     val:
       - 'slide001_core003.png'
+      - 'slide001_core077.png'
+      - 'slide001_core160.png'
       - 'slide002_core025.png'
+      - 'slide005_core051.png'
       - 'slide005_core058.png'
+      - 'slide006_core019.png'
+      - 'slide006_core047.png'
       - 'slide007_core005.png'
+      - 'slide007_core149.png'
     test:
       - 'slide001_core003.png'
+      - 'slide001_core077.png'
+      - 'slide001_core160.png'
       - 'slide002_core025.png'
+      - 'slide005_core051.png'
       - 'slide005_core058.png'
+      - 'slide006_core019.png'
+      - 'slide006_core047.png'
       - 'slide007_core005.png'
+      - 'slide007_core149.png'
   normalization: False
   augmentation:
     use_augmentation: True # switch everything off and on, if True automatically flips and 90 degree rotations are used in this case
