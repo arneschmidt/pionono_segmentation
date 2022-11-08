@@ -7,12 +7,12 @@ model:
   crowd_type: unet #prob-unet # pixel, image, global
   identity_reg: False
   alpha: 0.4
-  epochs: 100
+  epochs: 60
   loss: ce
   batch_size: 5
   optimizer: adam # sgd_mom, adam
   learning_rate: 0.0001
-  lr_decay_after_epoch: 10
+  lr_decay_after_epoch: 20
   lr_decay_param: 0.1
   backbone: unet # unet, linknet
   encoder:
