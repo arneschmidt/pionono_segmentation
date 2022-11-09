@@ -49,19 +49,46 @@ def resize_images_in_folder(in_dir, out_dir, resize_type='nearest', mask=False):
         resolution_list.append(image.shape)
         image = cv2.resize(image, (resize_res, resize_res), interpolation=interpolation)
 
-        # set background class to las index
         if mask:
-            image = image - 1
-            other_class = np.ones_like(image) * 4
-            image = np.where(image==255, other_class, image)
+            # The initial classes are 0 (background), 1 (normal tissue), 3 (GG3), 4 (GG4), 5 (GG5), 6 (normal tissue)
+            # We move these classes to: 0 (normal tissue), 1 (GG3), 2 (GG4), 3 (GG5), 4 (background)
+            ones = np.ones_like(image)
+
+            image = image - 2
+
+            image = np.where(image==255, ones*0, image)
+            image = np.where(image == 4, ones*0, image)
+            image = np.where(image==254, ones*4, image)
+            assert np.all(image >= 0)
+            assert np.all(image <= 4)
+
         cv2.imwrite(img_path_out, image)
     # print('Image shapes: ' + np.unique(resolution_list))
 
 def resize_all_images():
-    resize_images_in_folder(args.input_dir + train_img_dir, args.output_dir + train_img_dir, 'bicubic')
-    resize_images_in_folder(args.input_dir + test_img_dir, args.output_dir + test_img_dir, 'bicubic')
+    # resize_images_in_folder(args.input_dir + train_img_dir, args.output_dir + train_img_dir, 'bicubic')
+    # resize_images_in_folder(args.input_dir + test_img_dir, args.output_dir + test_img_dir, 'bicubic')
     for annotator_dir in map_annotator_dirs:
         resize_images_in_folder(args.input_dir + map_dir + annotator_dir, args.output_dir + map_dir + annotator_dir, 'nearest', mask=True)
+
+def calculate_dataset_statistics():
+    print('### Dataset Statistic ###')
+    majority_dir_name = 'Majority_Voting/'
+    majority_voting_path = args.output_dir + map_dir + majority_dir_name
+    img_file_list = os.listdir(majority_voting_path)
+
+    count_pixels = [0, 0, 0, 0, 0]
+    count_classes = [0, 0, 0, 0, 0]
+    for img_file in img_file_list:
+        mask = cv2.imread(majority_voting_path + img_file)
+        for c in range(len(count_pixels)):
+            pixels_c = int(np.sum(mask==c)/3)
+            count_pixels[c] += pixels_c
+            if pixels_c > 0:
+                count_classes[c] += 1
+    print('Overall classes per pixel: ' + str(count_pixels))
+    print('Overall classes per image: ' + str(count_classes))
+
 
 def create_crossvalidation_splits():
     print('### Create Cross Validation ###')
@@ -90,6 +117,7 @@ def create_crossvalidation_splits():
         print('No of train images: ' + str(len(os.listdir(crossval_dir_train))))
 
 def create_majority_voting_masks():
+    print('### Create Majority Voting ###')
     majority_dir_name = 'Majority_Voting/'
     majority_voting_path = args.output_dir + map_dir + majority_dir_name
     os.makedirs(majority_voting_path, exist_ok=True)
@@ -115,15 +143,13 @@ def create_majority_voting_masks():
     print('Total images with availabel majority voting: ' + str(counter))
 
 
-# ---------Resize images-----------------
-# resize_all_images()
+resize_all_images()
 
-# ---------Create Cross Validation ------
-# create_crossvalidation_splits()
+create_crossvalidation_splits()
 
-# ---------Create Majority Voting -------
 create_majority_voting_masks()
 
+calculate_dataset_statistics()
 
 
 
