@@ -27,6 +27,7 @@ data:
       - 'slide002_core050.png'
       - 'slide002_core072.png'
       - 'slide005_core075.png'
+      - 'slide005_core104.png'
       - 'slide007_core146.png'
     val:
       - 'slide001_core003.png'
@@ -35,6 +36,7 @@ data:
       - 'slide002_core025.png'
       - 'slide005_core051.png'
       - 'slide005_core058.png'
+      - 'slide005_core104.png'
       - 'slide006_core019.png'
       - 'slide006_core047.png'
       - 'slide007_core005.png'
@@ -46,6 +48,7 @@ data:
       - 'slide002_core025.png'
       - 'slide005_core051.png'
       - 'slide005_core058.png'
+      - 'slide005_core104.png'
       - 'slide006_core019.png'
       - 'slide006_core047.png'
       - 'slide007_core005.png'
