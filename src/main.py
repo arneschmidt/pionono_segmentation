@@ -1,5 +1,6 @@
 # TODO
-# calculate metrics for complete test set instead of single batches
+# make correct cross validation
+# implement staple
 
 
 import os

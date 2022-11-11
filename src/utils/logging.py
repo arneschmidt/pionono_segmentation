@@ -19,6 +19,7 @@ def start_logging():
     print('artifact uri:', mlflow.get_artifact_uri())
     mlflow.log_params(config['model'])
     mlflow.log_params(data_config_log)
+    mlflow.set_tags(config['logging']['tags'])
     mlflow.log_artifact('config.yaml')
 
 

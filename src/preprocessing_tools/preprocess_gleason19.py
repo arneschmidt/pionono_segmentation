@@ -86,8 +86,11 @@ def calculate_dataset_statistics():
             count_pixels[c] += pixels_c
             if pixels_c > 0:
                 count_classes[c] += 1
+    n_all_pixels = np.sum(count_pixels)
+    class_weights = n_all_pixels / (len(count_pixels) * np.array(count_pixels))
     print('Overall classes per pixel: ' + str(count_pixels))
     print('Overall classes per image: ' + str(count_classes))
+    print('Class_weights: ' + str(class_weights))
 
 
 def create_crossvalidation_splits():
@@ -143,11 +146,11 @@ def create_majority_voting_masks():
     print('Total images with availabel majority voting: ' + str(counter))
 
 
-resize_all_images()
-
-create_crossvalidation_splits()
-
-create_majority_voting_masks()
+# resize_all_images()
+#
+# create_crossvalidation_splits()
+#
+# create_majority_voting_masks()
 
 calculate_dataset_statistics()
 
