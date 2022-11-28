@@ -9,13 +9,13 @@ data:
   ignore_last_class_only_for_testing: True # set True if last class will be ignored during  testing
   path: /data/BasesDeDatos/Gleason_2019/resized_dataset_1024/
   train:
-    images: Crossval2/train
+    images: Crossval3/train
     masks: Maps/STAPLE
   val:
-    images: Crossval2/val
+    images: Crossval3/val
     masks: Maps/STAPLE
   test:
-    images: Crossval2/val
+    images: Crossval3/val
     masks: Maps/STAPLE
   visualize_images:
     train:

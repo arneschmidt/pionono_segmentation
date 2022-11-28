@@ -25,7 +25,7 @@ def init_global_config(args):
         config = yaml.full_load(file)
 
     # load dataset config, overwrite parameters if double
-    with open(config["data"]["dataset_config"]) as file:
+    with open(args.dataset_config) as file:
         config_data_dependent = yaml.full_load(file)
     config = config_update(config, config_data_dependent)
 

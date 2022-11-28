@@ -10,13 +10,13 @@ data:
   path: /data/BasesDeDatos/Gleason_2019/resized_dataset_1024/
   train:
     images: Crossval0/train
-    masks: Maps/Majority_Voting
+    masks: Maps/STAPLE
   val:
     images: Crossval0/val
-    masks: Maps/Majority_Voting
+    masks: Maps/STAPLE
   test:
     images: Crossval0/val
-    masks: Maps/Majority_Voting
+    masks: Maps/STAPLE
   visualize_images:
     train:
       - 'slide001_core005.png'
