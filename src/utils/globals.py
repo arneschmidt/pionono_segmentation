@@ -21,7 +21,7 @@ def init_global_config(args):
     global config
 
     # load default config
-    with open(args.default_config) as file:
+    with open(args.config) as file:
         config = yaml.full_load(file)
 
     # load dataset config, overwrite parameters if double
