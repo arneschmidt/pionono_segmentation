@@ -20,10 +20,18 @@ eps=1e-7
 class ModelHandler():
     def __init__(self, annotators):
         config = globals.config
-
+        self.train_img_vis = []
+        self.train_label_vis = []
+        self.train_pred_vis = []
+        self.train_img_name = []
         # architecture
-        if config['model']['crowd_type'] == 'prob-unet':
-            self.model = ProbabilisticUnet(3, config['data']['class_no'])
+        if config['model']['method'] == 'prob-unet':
+            self.model = ProbabilisticUnet(input_channels=3, num_classes=config['data']['class_no'],
+                                           latent_dim=config['model']['prob_unet_config']['latent_dim'],
+                                        no_convs_fcomb=4, beta=config['model']['prob_unet_config']['kl_factor'],
+                                           reg_factor=config['model']['prob_unet_config']['reg_factor'])
+            # (256, 128, 64, 32, 16)
+            # self.model = ProbabilisticUnet(3, config['data']['class_no'])
         elif config['data']['crowd']:
             self.model = Crowd_segmentationModel(annotators)
             self.alpha = 1
@@ -55,11 +63,11 @@ class ModelHandler():
         epochs = config['model']['epochs']
         learning_rate = config['model']['learning_rate']
         batch_s = config['model']['batch_size']
-        vis_train_images = config['data']['visualize_images']['train']
+
         save_image_color_legend()
 
         # Optimizer
-        if config['data']['crowd'] and config['model']['crowd_type']!='prob-unet':
+        if config['data']['crowd'] and config['model']['method']!='prob-unet':
             optimizer = torch.optim.Adam([
                 {'params': model.seg_model.parameters()},
                 {'params': model.crowd_layers.parameters(), 'lr': 1e-3}
@@ -75,27 +83,24 @@ class ModelHandler():
         else:
             raise Exception('Choose valid optimizer!')
 
-        min_trace = config['model']['min_trace']
+        if config['data']['ignore_last_class']:
+            ignore_index = int(config['data']['class_no'])  # deleted class is always set to the last index
+        else:
+            ignore_index = -100  # this means no index ignored
+        self.ignore_index = ignore_index
+        if config['model']['method'] != 'conf_matrix':
+            if self.loss_mode == 'ce':
+                loss_fct = torch.nn.CrossEntropyLoss(reduction='mean', ignore_index=ignore_index, weight=class_weights)
+            elif self.loss_mode == 'dice':
+                loss_fct = DiceLoss(ignore_index=ignore_index, from_logits=False, mode='multiclass')
+            elif self.loss_mode == 'focal':
+                loss_fct = FocalLoss(reduction='mean', ignore_index=ignore_index, mode='multiclass')
 
+        loss_dict = {}
         # Training loop
         for i in range(0, epochs):
-
             print('\nEpoch: {}'.format(i))
             model.train()
-
-            # Stop of the warm-up period
-            if i == 5: #10 for cr_image_dice // 5 rest of the methods
-                print("Minimize trace activated!")
-                min_trace = True
-                self.alpha = config['model']['alpha']
-                print("Alpha updated", self.alpha)
-
-                if config['data']['crowd'] and config['model']['crowd_type']!='prob-unet':
-                    optimizer = torch.optim.Adam([
-                        {'params': model.seg_model.parameters()},
-                        {'params': model.crowd_layers.parameters(), 'lr': 1e-4}
-                    ], lr=learning_rate)
-
             # Training in batches
             for j, (images, labels, imagename, ann_ids) in enumerate(trainloader):
                 # Loading data to GPU
@@ -106,61 +111,45 @@ class ModelHandler():
                 # zero the parameter gradients
                 optimizer.zero_grad()
 
-                if config['data']['ignore_last_class']:
-                    ignore_index = int(config['data']['class_no'])  # deleted class is always set to the last index
-                else:
-                    ignore_index = -100  # this means no index ignored
-                self.ignore_index = ignore_index
-
                 # Foward+loss (crowd or not)
-                if config['model']['crowd_type'] == 'prob-unet':
-                    _, labels = torch.max(labels, dim=1)
-                    labels = labels[:,None,:,:]
-                    model.forward(images, labels, training=True)
-                    elbo = model.elbo(labels)
-                    reg_loss = l2_regularisation(model.posterior) + l2_regularisation(model.prior) + l2_regularisation(
-                        model.fcomb.layers)
-                    loss = -elbo + 1e-5 * reg_loss
-                elif config['data']['crowd']:
-                    _, labels = torch.max(labels, dim=1)
+                _, labels = torch.max(labels, dim=1)
+
+                if config['model']['method'] != 'conf_matrix':
+                    if config['model']['method'] == 'prob-unet':
+                        # labels = torch.unsqueeze(labels, 1)
+                        model.forward(images, labels, training=True)
+                        loss = model.combined_loss(labels, loss_fct)
+                        y_pred = model.reconstruction
+
+                    elif config['model']['method'] == 'supervised':
+                        y_pred = model(images)
+                        loss = loss_fct(y_pred, labels)
+                    #
+                    if j % int(config['logging']['interval']) == 0:
+                        print("Iter {}/{} - batch loss : {:.4f}".format(j, len(trainloader), loss))
+                        self.log_training_metrics(y_pred, labels, loss, model, i * len(trainloader) * batch_s + j)
+                    self.store_train_imgs(imagename, images, labels, y_pred)
+
+                else:
+                    if i == 5:  # 10 for cr_image_dice // 5 rest of the methods
+                        print("Minimize trace activated!")
+                        min_trace = True
+                        self.alpha = config['model']['alpha']
+                        print("Alpha updated", self.alpha)
+                        optimizer = torch.optim.Adam([
+                            {'params': model.seg_model.parameters()},
+                            {'params': model.crowd_layers.parameters(), 'lr': 1e-4}
+                        ], lr=learning_rate)
                     y_pred, cms = model(images, ann_ids)
                     loss, loss_ce, loss_trace = noisy_label_loss(y_pred, cms, labels, ignore_index,
-                                                                 min_trace, self.alpha, self.loss_mode)
-                else:
-                    _, labels = torch.max(labels, dim=1)
-                    y_pred = model(images)
-
-                    if self.loss_mode == 'ce':
-                        loss = torch.nn.NLLLoss(reduction='mean', ignore_index=ignore_index, weight=class_weights)(
-                            torch.log(y_pred+eps), labels)
-                    elif self.loss_mode == 'dice':
-                        loss = DiceLoss(ignore_index=ignore_index, from_logits=False, mode='multiclass')(
-                            y_pred, labels)
-                    elif self.loss_mode == 'focal':
-                        loss = FocalLoss(reduction='mean', ignore_index=ignore_index, mode='multiclass')(
-                            y_pred, labels)
-
-                # Final prediction
-                if not config['data']['crowd']:
-                    _, y_pred_max = torch.max(y_pred[:, 0:class_no], dim=1)
+                                                                 config['model']['min_trace'], self.alpha, self.loss_mode)
 
                 # Backprop
                 if not torch.isnan(loss):
                     loss.backward()
                     optimizer.step()
 
-                # Save results in training (only save for not crowd methods)
-                if j % int(config['logging']['interval']) == 0:
-                    print("Iter {}/{} - batch loss : {:.4f}".format(j, len(trainloader), loss))
-                    if not config['data']['crowd']:
-                        train_results = self.get_results(y_pred_max, labels)
-                        log_results(train_results, mode='train', step=(i * len(trainloader) * batch_s + j))
-                        for k in range(len(imagename)):
-                            if imagename[k] in vis_train_images:
-                                labels_save = labels[k].cpu().detach().numpy()
-                                y_pred_max_save = y_pred_max[k].cpu().detach().numpy()
-                                images_save = images[k]  # .cpu().detach().numpy()
-                                save_test_images(images_save, y_pred_max_save, labels_save, imagename[k], 'train')
+            self.save_train_imgs()
 
             # Save validation results
             val_results = self.evaluate(validateloader, mode='val')  # TODO: validate crowd
@@ -179,7 +168,7 @@ class ModelHandler():
                     g['lr'] = g['lr'] / (1 + config['model']['lr_decay_param'])
 
             # Show annotator matrix
-            if config['data']['crowd'] and config['model']['crowd_type']!='prob-unet':
+            if config['data']['crowd'] and config['model']['method']!='prob-unet':
                 _,  ann_id = torch.max(ann_ids, dim=1)
                 for ann_ix, cm in enumerate(cms):
                     cm = cm.view(5,5,512,512)
@@ -190,8 +179,8 @@ class ModelHandler():
 
 
         # Final evaluation of crowd
-        if config['data']['crowd'] and config['model']['crowd_type']!='prob-unet':
-            self.evaluate_crowd(trainloader, mode='train')
+        if config['data']['crowd'] and config['model']['method']!='prob-unet':
+            self.evaluate_confusion_matrix_model(trainloader, mode='train')
 
     def test(self, testloader):
         save_image_color_legend()
@@ -222,7 +211,7 @@ class ModelHandler():
         with torch.no_grad():
             for j, (test_img, test_label, test_name, _) in enumerate(evaluatedata):
                 test_img = test_img.to(device=device, dtype=torch.float32)
-                if config['model']['crowd_type'] == 'prob-unet':
+                if config['model']['method'] == 'prob-unet':
                     model.forward(test_img, None, training=False)
                     test_pred = model.sample(testing=True)
                 elif globals.config['data']['crowd']:
@@ -251,7 +240,7 @@ class ModelHandler():
             print(results)
             return results
 
-    def evaluate_crowd(self, evaluatedata, mode='train'):
+    def evaluate_confusion_matrix_model(self, evaluatedata, mode='train'):
         config = globals.config
         class_no = config['data']['class_no']
         vis_images = config['data']['visualize_images'][mode]
@@ -296,7 +285,7 @@ class ModelHandler():
                 cm = cm.view(b, h*w, c, c)
 
                 config = globals.config
-                if config['model']['crowd_type'] == 'pixel':
+                if config['model']['method'] == 'pixel':
                     cm = cm.mean(1)
                     cm = cm/cm.sum(1, keepdim=True)
 
@@ -359,7 +348,7 @@ class ModelHandler():
                     cm = cm.view(b, h*w, c, c)
 
                     config = globals.config
-                    if config['model']['crowd_type'] == 'pixel':
+                    if config['model']['method'] == 'pixel':
                         cm = cm.mean(1)
                         cm = cm/cm.sum(1, keepdim=True)
 
@@ -393,3 +382,39 @@ class ModelHandler():
         results = segmentation_scores(label, pred, metrics_names)
 
         return results
+
+    def log_training_metrics(self, y_pred, labels, loss, model, step):
+        config = globals.config
+        _, y_pred = torch.max(y_pred[:, 0:config['data']['class_no']], dim=1)
+        # print('CE loss:' + str(model.reconstruction_loss) + ' KL loss: ' + str(
+        #     model.kl) + ' Reg loss: ' + str(reg_loss))
+        loss_dict ={}
+        loss_dict['loss'] = float(loss.cpu().detach().numpy())
+        if globals.config['model']['method'] == 'prob-unet':
+            loss_dict['loss_reconstruction'] = float(model.reconstruction_loss.cpu().detach().numpy())
+            loss_dict['loss_kl'] = float((model.kl * model.beta).cpu().detach().numpy())
+            loss_dict['loss_regularization'] = float(model.reg_loss.cpu().detach().numpy())
+        mlflow.log_metrics(loss_dict)
+        train_results = self.get_results(y_pred, labels)
+        log_results(train_results, mode='train', step=step)
+
+    def store_train_imgs(self, imagenames, images, labels, y_pred):
+        config = globals.config
+        vis_train_images = config['data']['visualize_images']['train']
+
+        for k in range(len(imagenames)):
+            if imagenames[k] in vis_train_images:
+                _, y_pred = torch.max(y_pred[:, 0:config['data']['class_no']], dim=1)
+                self.train_img_vis.append(images[k])
+                self.train_label_vis.append(labels[k].cpu().detach().numpy())
+                self.train_pred_vis.append(y_pred[k].cpu().detach().numpy())
+                self.train_img_name.append(imagenames[k])
+
+    def save_train_imgs(self):
+        for i in range(len(self.train_img_vis)):
+            save_test_images(self.train_img_vis[i], self.train_pred_vis[i],
+                             self.train_label_vis[i], self.train_img_name[i], 'train')
+        self.train_img_vis = []
+        self.train_label_vis = []
+        self.train_pred_vis = []
+        self.train_img_name = []

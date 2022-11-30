@@ -223,15 +223,15 @@ class Crowd_segmentationModel(torch.nn.Module):
         self.noisy_labels_no = len(noisy_labels)
         print("Number of annotators (model): ", self.noisy_labels_no)
         self.class_no = config['data']['class_no']
-        self.crowd_type = config['model']['crowd_type']
-        if self.crowd_type == 'global':
+        self.method = config['model']['method']
+        if self.method == 'global':
             print("Global crowdsourcing")
             self.crowd_layers = global_CM(self.class_no, 512, 512, self.noisy_labels_no)
 
-        elif self.crowd_type == 'image':  # TODO: put this cases as in mode and not true/false
+        elif self.method == 'image':  # TODO: put this cases as in mode and not true/false
             print("Image dependent crowdsourcing")
             self.crowd_layers = image_CM(self.class_no, 512, 512, self.noisy_labels_no)
-        elif self.crowd_type == 'pixel':
+        elif self.method == 'pixel':
             print("Pixel dependent crowdsourcing")
             self.crowd_layers = cm_layers(in_channels=16, norm='in',
                                                   class_no=config['data']['class_no'], noisy_labels_no=self.noisy_labels_no)  # TODO: arrange in_channels

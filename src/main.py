@@ -40,7 +40,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Cancer Classification")
     parser.add_argument("--config", "-c", type=str, default="./config.yaml",
                         help="Config path (yaml file expected) to default config.")
-    parser.add_argument("--dataset_config", "-dc", type=str, default="./dataset_dependent/gleason19/dataset_config_crossval0.yaml",
+    parser.add_argument("--dataset_config", "-dc", type=str, default="./dataset_dependent/gleason19/dataset_config_crowd_crossval0.yaml",
                         help="Config path (yaml file expected) to default config.")
     parser.add_argument("--experiment_folder", "-ef", type=str, default="None",
                         help="Config path to experiment folder. Parameters will override defaults. Optional.")

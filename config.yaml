@@ -1,16 +1,9 @@
-data:
-  dataset_config: dataset_dependent/gleason19/dataset_config.yaml
-
 model:
-  min_trace: False
   seed: 0
-  crowd_type: unet #prob-unet # pixel, image, global
-  identity_reg: False
-  alpha: 0.4
-  epochs: 60
-  loss: ce
-  batch_size: 5
+  batch_size: 2
   optimizer: adam # sgd_mom, adam
+  epochs: 60
+  loss: ce # ce, dice, focal
   learning_rate: 0.0001
   lr_decay_after_epoch: 20
   lr_decay_param: 0.1
@@ -20,7 +13,19 @@ model:
     weights: imagenet # imagenet or None
   decoder:
     activation: softmax # softmax or None
+  method: prob-unet # supervised prob-unet, conf_matrix, pionono
+  prob_unet_config:
+    kl_factor: 1.0
+    reg_factor: 0.00001
+    latent_dim: 6
+  conf_matrix_config:
+    min_trace: False
+    identity_reg: False
+    alpha: 0.4
 
 logging:
   interval: 10
   mlruns_folder: /work/work_arne/mlflow_server # http://127.0.0.1:5002
+  tags:
+    stage: initial
+    spec: default

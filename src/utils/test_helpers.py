@@ -43,8 +43,8 @@ def segmentation_scores(label_trues, label_preds, metric_names):
         label_preds = np.where(label_preds==class_no, nc_class, label_preds)
 
     dice_per_class = dice_coef_multilabel(label_trues, label_preds)
-    results['macro_f1'] = f1_score(label_trues, label_preds, labels=np.arange(class_no), average='macro')
-    f1_score_classwise = f1_score(label_trues, label_preds, labels=np.arange(class_no), average=None)
+    results['macro_f1'] = f1_score(label_trues, label_preds, labels=np.arange(class_no), average='macro', zero_division=0)
+    f1_score_classwise = f1_score(label_trues, label_preds, labels=np.arange(class_no), average=None, zero_division=0)
 
     results['macro_dice'] = dice_per_class.mean()
 

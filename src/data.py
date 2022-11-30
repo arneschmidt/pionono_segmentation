@@ -72,8 +72,8 @@ def get_preprocessing(preprocessing_fn):
 
 # =============================================
 
-class CustomDataset(torch.utils.data.Dataset):
-    """Custom Dataset. Read images, apply augmentation and preprocessing transformations.
+class SupervisedDataset(torch.utils.data.Dataset):
+    """Supervised Dataset. Read images, apply augmentation and preprocessing transformations.
     Args:
         images_dir (str): path to images folder
         masks_dir (str): path to segmentation masks folder
@@ -118,9 +118,6 @@ class CustomDataset(torch.utils.data.Dataset):
         # extract certain classes from mask (e.g. cars)
         masks = [(mask == v) for v in self.class_values]
         mask = np.stack(masks, axis=-1).astype('float')
-
-        # apply augmentations
-
 
         # apply preprocessing
         if self.preprocessing:
@@ -198,8 +195,6 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
             if os.path.exists(mask_path):
                 mask = cv2.imread(mask_path, 0)
                 # extract certain classes from mask (e.g. cars)
-                mask = [(mask == v) for v in self.class_values]
-                mask = np.stack(mask, axis=-1).astype('float')
                 annotator_id = torch.zeros(len(self.annotators_fps))
                 annotator_id[self.annotators_fps.index(ann_path)] = 1
                 break
@@ -215,6 +210,9 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
             sample = self.augmentation(image=image, mask=mask)
             image = sample['image']
             mask = sample['mask']
+
+        mask = [(mask == v) for v in self.class_values]
+        mask = np.stack(mask, axis=-1).astype('float')
 
         # apply preprocessing
         if self.preprocessing:
@@ -362,12 +360,12 @@ def get_data_supervised():
         annotators = train_dataset.annotators
 
     else:
-        train_dataset = CustomDataset(train_image_folder, train_label_folder, augmentation=get_training_augmentation(),
-                                      preprocessing = preprocessing)
-    validate_dataset = CustomDataset(val_image_folder, val_label_folder, preprocessing = preprocessing)
+        train_dataset = SupervisedDataset(train_image_folder, train_label_folder, augmentation=get_training_augmentation(),
+                                          preprocessing = preprocessing)
+    validate_dataset = SupervisedDataset(val_image_folder, val_label_folder, preprocessing = preprocessing)
 
 
-    test_dataset = CustomDataset(test_image_folder, test_label_folder, preprocessing = preprocessing)
+    test_dataset = SupervisedDataset(test_image_folder, test_label_folder, preprocessing = preprocessing)
 
     trainloader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
     validateloader = data.DataLoader(validate_dataset, batch_size=batch_size, shuffle=False, num_workers=batch_size,

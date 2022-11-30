@@ -153,12 +153,12 @@ def create_crossvalidation_splits():
                 shutil.copy(train_img_path + img, crossval_dir_train + img)
                 train_img_list.append(img)
         print('No of val images: ' + str(len(os.listdir(crossval_dir_val))))
-        calculate_dataset_statistics(args.output_dir + map_dir + 'Majority_Voting/', name='Validation', list=val_img_list)
+        calculate_dataset_statistics(args.output_dir + map_dir + 'MV/', name='Validation', list=val_img_list)
         print('No of train images: ' + str(len(os.listdir(crossval_dir_train))))
-        calculate_dataset_statistics(args.output_dir + map_dir + 'Majority_Voting/', name='Training', list=train_img_list)
+        calculate_dataset_statistics(args.output_dir + map_dir + 'MV/', name='Training', list=train_img_list)
 
 
-def create_voting_masks(voting_mechanism ='majority', dir_name='Majority_Voting/'):
+def create_voting_masks(voting_mechanism ='majority', dir_name='MV/'):
     """
     voting mecanism: 'majority' or 'staple'
     """
@@ -198,13 +198,13 @@ def create_voting_masks(voting_mechanism ='majority', dir_name='Majority_Voting/
 
 # resize_all_images()
 
-# create_voting_masks('majority', dir_name='Majority_Voting/')
+# create_voting_masks('majority', dir_name='MV/')
 
 # create_voting_masks('staple', dir_name='STAPLE/')
 
 create_crossvalidation_splits()
 
-# calculate_dataset_statistics(args.output_dir + map_dir + 'Majority_Voting/', 'total')
+# calculate_dataset_statistics(args.output_dir + map_dir + 'MV/', 'total')
 
 
 

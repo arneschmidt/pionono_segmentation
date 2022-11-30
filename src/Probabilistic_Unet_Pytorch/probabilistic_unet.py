@@ -85,6 +85,7 @@ class AxisAlignedConvGaussian(nn.Module):
         if segm is not None:
             self.show_img = input
             self.show_seg = segm
+            segm = torch.unsqueeze(segm, 1)
             input = torch.cat((input, segm), dim=1)
             self.show_concat = input
             self.sum_input = torch.sum(input)
@@ -187,6 +188,7 @@ class _UNet(torch.nn.Module):
     def forward(self, x):
         x = self.seg_model.encoder(x)
         x = self.seg_model.decoder(*x)
+        # x = self.seg_model(x)
         return x
 
 
@@ -200,8 +202,8 @@ class ProbabilisticUnet(nn.Module):
     latent_dim: dimension of the latent space
     no_cons_per_block: no convs per block in the (convolutional) encoder of prior and posterior
     """
-
-    def __init__(self, input_channels=1, num_classes=1, num_filters=[32,64,128,192], latent_dim=6, no_convs_fcomb=4, beta=10.0):
+    def __init__(self, input_channels=1, num_classes=1, num_filters=[16,32,64,128,256],
+                 latent_dim=6, no_convs_fcomb=4, beta=10.0, reg_factor=1.0):
         super(ProbabilisticUnet, self).__init__()
         self.input_channels = input_channels
         self.num_classes = num_classes
@@ -211,6 +213,7 @@ class ProbabilisticUnet(nn.Module):
         self.no_convs_fcomb = no_convs_fcomb
         self.initializers = {'w':'he_normal', 'b':'normal'}
         self.beta = beta
+        self.reg_factor = reg_factor
         self.z_prior_sample = 0
 
         # self.unet = Unet(self.input_channels, self.num_classes, self.num_filters, self.initializers, apply_last_layer=False, padding=True).to(device)
@@ -239,10 +242,10 @@ class ProbabilisticUnet(nn.Module):
             self.z_prior_sample = z_prior
         else:
             #You can choose whether you mean a sample or the mean here. For the GED it is important to take a sample.
-            #z_prior = self.prior_latent_space.base_dist.loc 
-            z_prior = self.prior_latent_space.sample()
+            z_prior = self.prior_latent_space.base_dist.loc
+            # z_prior = self.prior_latent_space.sample()
             self.z_prior_sample = z_prior
-        return self.fcomb.forward(self.unet_features,z_prior)
+        return self.fcomb.forward(self.unet_features, z_prior)
 
 
     def reconstruct(self, use_posterior_mean=False, calculate_posterior=False, z_posterior=None):
@@ -275,14 +278,11 @@ class ProbabilisticUnet(nn.Module):
             kl_div = log_posterior_prob - log_prior_prob
         return kl_div
 
-    def elbo(self, segm, analytic_kl=True, reconstruct_posterior_mean=False):
+    def elbo(self, segm, loss_fct, analytic_kl=True, reconstruct_posterior_mean=False):
         """
         Calculate the evidence lower bound of the log-likelihood of P(Y|X)
         """
-
-        # criterion = nn.BCEWithLogitsLoss(size_average = False, reduce=False, reduction=None)
-
-        criterion = nn.CrossEntropyLoss(size_average = False, reduce=False, reduction=None)
+        criterion = loss_fct
         z_posterior = self.posterior_latent_space.rsample()
         
         self.kl = torch.mean(self.kl_divergence(analytic=analytic_kl, calculate_posterior=False, z_posterior=z_posterior))
@@ -296,3 +296,11 @@ class ProbabilisticUnet(nn.Module):
         self.mean_reconstruction_loss = torch.mean(reconstruction_loss)
 
         return -(self.reconstruction_loss + self.beta * self.kl)
+
+    def combined_loss(self, labels, loss_fct):
+        elbo = self.elbo(labels, loss_fct=loss_fct)
+        self.reg_loss = (l2_regularisation(self.posterior) + l2_regularisation(
+            self.prior) + l2_regularisation(
+            self.fcomb.layers)) * self.reg_factor
+        loss = -elbo + self.reg_loss
+        return loss

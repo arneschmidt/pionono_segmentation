@@ -26,6 +26,8 @@ def save_test_images(test_imgs:torch.Tensor, test_preds: np.array, test_labels: 
     dir = os.path.join(globals.config['logging']['experiment_folder'], visual_dir)
     os.makedirs(dir, exist_ok=True)
 
+    if len(test_labels.shape) == 3:
+        test_labels = test_labels[0]
     h, w = np.shape(test_labels)
 
     test_preds = np.asarray(test_preds, dtype=np.uint8)
