@@ -2,11 +2,11 @@
 import torch
 from torch import nn
 from Probabilistic_Unet_Pytorch.unet_blocks import *
-#from unet import Unet
+from Probabilistic_Unet_Pytorch.unet import Unet
 from Probabilistic_Unet_Pytorch.utils import init_weights,init_weights_orthogonal_normal, l2_regularisation
 import torch.nn.functional as F
 from torch.distributions import Normal, Independent, kl
-from utils.model_architecture import create_segmentation_backbone
+from utils.segmentation_backbone import create_segmentation_backbone
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -180,7 +180,8 @@ class Fcomb(nn.Module):
             return self.last_layer(output)
 
 
-class _UNet(torch.nn.Module):
+
+class OurUnet(torch.nn.Module):
     def __init__(self):
         super().__init__()
         self.seg_model = create_segmentation_backbone()
@@ -203,7 +204,7 @@ class ProbabilisticUnet(nn.Module):
     no_cons_per_block: no convs per block in the (convolutional) encoder of prior and posterior
     """
     def __init__(self, input_channels=1, num_classes=1, num_filters=[16,32,64,128,256],
-                 latent_dim=6, no_convs_fcomb=4, beta=10.0, reg_factor=1.0):
+                 latent_dim=6, no_convs_fcomb=4, beta=10.0, reg_factor=1.0, original_backbone=False):
         super(ProbabilisticUnet, self).__init__()
         self.input_channels = input_channels
         self.num_classes = num_classes
@@ -215,9 +216,11 @@ class ProbabilisticUnet(nn.Module):
         self.beta = beta
         self.reg_factor = reg_factor
         self.z_prior_sample = 0
-
-        # self.unet = Unet(self.input_channels, self.num_classes, self.num_filters, self.initializers, apply_last_layer=False, padding=True).to(device)
-        self.unet = _UNet().to(device)
+        self.original_backbone = original_backbone
+        if self.original_backbone:
+            self.unet = Unet(self.input_channels, self.num_classes, self.num_filters, self.initializers, apply_last_layer=False, padding=True).to(device)
+        else:
+            self.unet = OurUnet().to(device)
         self.prior = AxisAlignedConvGaussian(self.input_channels, self.num_filters, self.no_convs_per_block, self.latent_dim,  self.initializers,).to(device)
         self.posterior = AxisAlignedConvGaussian(self.input_channels, self.num_filters, self.no_convs_per_block, self.latent_dim, self.initializers, posterior=True).to(device)
         self.fcomb = Fcomb(self.num_filters, self.latent_dim, self.input_channels, self.num_classes, self.no_convs_fcomb, {'w':'orthogonal', 'b':'normal'}, use_tile=True).to(device)
@@ -230,7 +233,10 @@ class ProbabilisticUnet(nn.Module):
         if training:
             self.posterior_latent_space = self.posterior.forward(patch, segm)
         self.prior_latent_space = self.prior.forward(patch)
-        self.unet_features = self.unet.forward(patch)
+        if self.original_backbone:
+            self.unet_features = self.unet.forward(patch, False)
+        else:
+            self.unet_features = self.unet.forward(patch)
 
     def sample(self, testing=False):
         """

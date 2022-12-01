@@ -27,14 +27,3 @@ def create_segmentation_backbone():
         raise Exception('Choose valid model backbone!')
     return seg_model
 
-
-class SegmentationModel(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.seg_model = create_segmentation_backbone()
-        self.activation = torch.nn.Softmax(dim=1)
-
-    def forward(self, x):
-        x = self.seg_model(x)
-        y = self.activation(x)
-        return y

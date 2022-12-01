@@ -15,6 +15,7 @@ model:
     activation: softmax # softmax or None
   method: prob-unet # supervised prob-unet, conf_matrix, pionono
   prob_unet_config:
+    original_backbone: True # use original prob-unet backbone (overwrites above configuration of backbone)
     kl_factor: 1.0
     reg_factor: 0.00001
     latent_dim: 6

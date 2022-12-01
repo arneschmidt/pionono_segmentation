@@ -167,11 +167,11 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
         self.annotators_fps = [os.path.join(masks_dir, annotator) for annotator in self.annotators]
         self.masks_dir = masks_dir
         self.annotators_no = len(self.annotators)
-        print("Images: ", self.ids)
+        # print("Images: ", self.ids)
         print("Annotators: ")
         print(*self.annotators, sep = "\n")
         print("Number of annotators: ", self.annotators_no)
-        print("Paths of annotators ", *self.annotators_fps)
+        # print("Paths of annotators ", *self.annotators_fps)
         self.class_no = globals.config['data']['class_no']
         self.class_values = self.set_class_values(self.class_no)
         self.augmentation = augmentation

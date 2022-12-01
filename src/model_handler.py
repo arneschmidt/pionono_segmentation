@@ -7,7 +7,7 @@ from Probabilistic_Unet_Pytorch.probabilistic_unet import ProbabilisticUnet
 from segmentation_models_pytorch.losses import DiceLoss, FocalLoss
 import utils.globals as globals
 from utils.saving import save_model, save_results, save_test_images, save_image_color_legend, save_crowd_images
-from utils.model_architecture import SegmentationModel
+from utils.model_supervised import SupervisedSegmentationModel
 from Probabilistic_Unet_Pytorch.utils import l2_regularisation
 from utils.crowd_model_architecture import Crowd_segmentationModel
 from utils.loss import noisy_label_loss
@@ -37,7 +37,7 @@ class ModelHandler():
             self.alpha = 1
             self.annotators = annotators
         else:
-            self.model = SegmentationModel()
+            self.model = SupervisedSegmentationModel()
 
         # loss
         self.loss_mode = config['model']['loss']
