@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from utils.model_architecture import create_segmentation_backbone
+from utils.segmentation_backbone import create_segmentation_backbone
 import utils.globals
 
 

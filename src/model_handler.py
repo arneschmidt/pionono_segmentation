@@ -9,7 +9,7 @@ import utils.globals as globals
 from utils.saving import save_model, save_results, save_test_images, save_image_color_legend, save_crowd_images
 from utils.model_supervised import SupervisedSegmentationModel
 from Probabilistic_Unet_Pytorch.utils import l2_regularisation
-from utils.crowd_model_architecture import Crowd_segmentationModel
+from utils.model_confusionmatrix import Crowd_segmentationModel
 from utils.loss import noisy_label_loss
 from utils.test_helpers import segmentation_scores
 from utils.logging import log_results
@@ -28,8 +28,9 @@ class ModelHandler():
         if config['model']['method'] == 'prob-unet':
             self.model = ProbabilisticUnet(input_channels=3, num_classes=config['data']['class_no'],
                                            latent_dim=config['model']['prob_unet_config']['latent_dim'],
-                                        no_convs_fcomb=4, beta=config['model']['prob_unet_config']['kl_factor'],
-                                           reg_factor=config['model']['prob_unet_config']['reg_factor'])
+                                           no_convs_fcomb=4, beta=config['model']['prob_unet_config']['kl_factor'],
+                                           reg_factor=config['model']['prob_unet_config']['reg_factor'],
+                                           original_backbone=config['model']['prob_unet_config']['original_backbone'])
             # (256, 128, 64, 32, 16)
             # self.model = ProbabilisticUnet(3, config['data']['class_no'])
         elif config['data']['crowd']:
