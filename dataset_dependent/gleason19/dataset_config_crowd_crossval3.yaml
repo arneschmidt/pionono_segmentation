@@ -7,7 +7,7 @@ data:
   class_weights: [1., 1., 1., 1., 1.] #[ 2.75319941,  1.12653214,  0.82120476, 32.35487692,  0.39992387]
   ignore_last_class: False # set True if last class will be ignored during training and testing
   ignore_last_class_only_for_testing: True # set True if last class will be ignored during  testing
-  path: /data/BasesDeDatos/Gleason_2019/resized_dataset_1024/
+  path: /home/arne/data/Gleason_2019/resized_dataset_1024/
   train:
     images: Crossval3/train
     masks: Maps
