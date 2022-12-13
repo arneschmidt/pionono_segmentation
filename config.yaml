@@ -3,7 +3,7 @@ model:
   batch_size: 2
   optimizer: adam # sgd_mom, adam
   epochs: 60
-  loss: ce # ce, dice, focal
+  loss: dice # ce, dice, focal
   learning_rate: 0.0001
   lr_decay_after_epoch: 20
   lr_decay_param: 0.1
@@ -13,12 +13,19 @@ model:
     weights: imagenet # imagenet or None
   decoder:
     activation: softmax # softmax or None
-  method: prob-unet # supervised prob-unet, conf_matrix, pionono
+  method: pionono # supervised, prob-unet, conf_matrix, pionono
   prob_unet_config:
     original_backbone: True # use original prob-unet backbone (overwrites above configuration of backbone)
     kl_factor: 1.0
     reg_factor: 0.00001
     latent_dim: 6
+  pionono_config:
+    kl_factor: 0.1
+    reg_factor: 0.00001
+    latent_dim: 6
+    z_prior_mu: 0.0
+    z_prior_sigma: 0.1
+    gold_annotator: 6
   conf_matrix_config:
     min_trace: False
     identity_reg: False
