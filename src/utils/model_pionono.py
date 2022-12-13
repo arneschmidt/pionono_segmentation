@@ -21,10 +21,10 @@ class LatentVariable(nn.Module):
         super(LatentVariable, self).__init__()
         self.latent_dims = latent_dims
         self.no_annotators = num_annotators
-        self.prior_distribution = self._init_distributions(prior_mu=prior_mu, prior_sigma=prior_sigma)
-        self.posterior_distribution = self._init_distributions(prior_mu=prior_mu, prior_sigma=prior_sigma)
+        self.prior_distribution = self._init_distributions(prior_mu=prior_mu, prior_sigma=prior_sigma, trainable=False)
+        self.posterior_distribution = self._init_distributions(prior_mu=prior_mu, prior_sigma=prior_sigma, trainable=True)
 
-    def _init_distributions(self, prior_mu=0.0, prior_sigma=1.0):
+    def _init_distributions(self, prior_mu=0.0, prior_sigma=1.0, trainable=True):
         dist_list = []
         for a in range(self.no_annotators):
             if isinstance(prior_mu, list):
@@ -35,6 +35,9 @@ class LatentVariable(nn.Module):
                 sigma = prior_sigma
             loc = torch.nn.Parameter(torch.ones(self.latent_dims)*mu) #.to_device(device)
             cov = torch.nn.Parameter(torch.eye(self.latent_dims) * torch.tensor(sigma*sigma)) #.to_device(device)
+            if not trainable:
+                loc.requires_grad = False
+                cov.requires_grad = False
             dist = torch.distributions.multivariate_normal.MultivariateNormal(loc,
                                                                               scale_tril=torch.tril(cov))
             dist_list.append(dist)
@@ -157,7 +160,7 @@ class PiononoModel(nn.Module):
         self.kl_factor = kl_factor
         self.reg_factor = reg_factor
         self.unet = UnetHeadless().to(device)
-        self.z = LatentVariable(num_annotators, latent_dim, prior_mu=z_prior_mu, prior_sigma=z_prior_sigma)
+        self.z = LatentVariable(num_annotators, latent_dim, prior_mu=z_prior_mu, prior_sigma=z_prior_sigma).to(device)
         self.fcomb = MyFcomb(16, self.latent_dim, self.input_channels, self.num_classes,
                              self.no_convs_fcomb, {'w' :'orthogonal', 'b' :'normal'}, use_tile=True).to(device)
 
