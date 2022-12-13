@@ -162,9 +162,15 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
         else:
             self.ids = os.listdir(images_dir)
         self.images_fps = [os.path.join(images_dir, image_id) for image_id in self.ids]
-        annotators = os.listdir(masks_dir)
-        self.annotators = [e for e in annotators if e not in ('expert', 'MV', 'STAPLE')]
-        self.annotators_fps = [os.path.join(masks_dir, annotator) for annotator in self.annotators]
+        # if mask_dir is a string, infer annotators from directory
+        if not isinstance(masks_dir, list):
+            annotators = os.listdir(masks_dir)
+            self.annotators = [e for e in annotators if e not in ('expert', 'MV', 'STAPLE')]
+            self.annotators_fps = [os.path.join(masks_dir, annotator) for annotator in self.annotators]
+        else:
+            self.annotators = globals.config['data']['train']['masks']
+            self.annotators_fps = masks_dir
+
         self.masks_dir = masks_dir
         self.annotators_no = len(self.annotators)
         # print("Images: ", self.ids)
@@ -195,8 +201,9 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
             if os.path.exists(mask_path):
                 mask = cv2.imread(mask_path, 0)
                 # extract certain classes from mask (e.g. cars)
-                annotator_id = torch.zeros(len(self.annotators_fps))
-                annotator_id[self.annotators_fps.index(ann_path)] = 1
+                # annotator_id = torch.zeros(len(self.annotators_fps))
+                # annotator_id[self.annotators_fps.index(ann_path)] = 1
+                annotator_id = self.annotators_fps.index(ann_path)
                 break
 
                 # print("Exist ", mask_path)
@@ -337,7 +344,12 @@ def get_data_supervised():
     crowd = config['data']['crowd']
 
     train_image_folder = os.path.join(config['data']['path'], config['data']['train']['images'])
-    train_label_folder = os.path.join(config['data']['path'], config['data']['train']['masks'])
+    mask_dirs = config['data']['train']['masks']
+    if not isinstance(mask_dirs, list):
+        train_label_folder = os.path.join(config['data']['path'], config['data']['train']['masks'])
+    else:
+        train_label_folder = [os.path.join(config['data']['path'], m) for m in mask_dirs]
+
     val_image_folder = os.path.join(config['data']['path'], config['data']['val']['images'])
     val_label_folder = os.path.join(config['data']['path'], config['data']['val']['masks'])
     test_image_folder = os.path.join(config['data']['path'], config['data']['test']['images'])

@@ -12,7 +12,7 @@ from data import get_data_supervised
 from utils.globals import init_global_config
 import utils.globals
 from model_handler import ModelHandler
-from utils.logging import start_logging
+from utils.mlflow_logger import start_logging
 
 
 def main():

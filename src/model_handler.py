@@ -3,16 +3,17 @@ import torch
 import mlflow
 import warnings
 import numpy as np
-from Probabilistic_Unet_Pytorch.probabilistic_unet import ProbabilisticUnet
-from segmentation_models_pytorch.losses import DiceLoss, FocalLoss
-import utils.globals as globals
-from utils.saving import save_model, save_results, save_test_images, save_image_color_legend, save_crowd_images
 from utils.model_supervised import SupervisedSegmentationModel
 from Probabilistic_Unet_Pytorch.utils import l2_regularisation
 from utils.model_confusionmatrix import Crowd_segmentationModel
+from Probabilistic_Unet_Pytorch.probabilistic_unet import ProbabilisticUnet
+from utils.model_pionono import PiononoModel
+from segmentation_models_pytorch.losses import DiceLoss, FocalLoss
+import utils.globals as globals
+from utils.saving import save_model, save_results, save_test_images, save_image_color_legend, save_crowd_images
 from utils.loss import noisy_label_loss
 from utils.test_helpers import segmentation_scores
-from utils.logging import log_results
+from utils.mlflow_logger import log_results
 
 eps=1e-7
 
@@ -25,6 +26,7 @@ class ModelHandler():
         self.train_pred_vis = []
         self.train_img_name = []
         # architecture
+
         if config['model']['method'] == 'prob-unet':
             self.model = ProbabilisticUnet(input_channels=3, num_classes=config['data']['class_no'],
                                            latent_dim=config['model']['prob_unet_config']['latent_dim'],
@@ -33,7 +35,15 @@ class ModelHandler():
                                            original_backbone=config['model']['prob_unet_config']['original_backbone'])
             # (256, 128, 64, 32, 16)
             # self.model = ProbabilisticUnet(3, config['data']['class_no'])
-        elif config['data']['crowd']:
+        elif config['model']['method'] == 'pionono':
+            self.model = PiononoModel(input_channels=3, num_classes=config['data']['class_no'], num_annotators=len(annotators),
+                                      predict_annotator=config['model']['pionono_config']['gold_annotator'],
+                                      latent_dim=config['model']['pionono_config']['latent_dim'],
+                                      z_prior_mu=config['model']['pionono_config']['z_prior_mu'],
+                                      z_prior_sigma=config['model']['pionono_config']['z_prior_sigma'],
+                                      kl_factor=config['model']['pionono_config']['kl_factor'],
+                                      reg_factor=config['model']['pionono_config']['reg_factor'])
+        elif config['model']['method'] == 'confusion_matrix':
             self.model = Crowd_segmentationModel(annotators)
             self.alpha = 1
             self.annotators = annotators
@@ -68,7 +78,7 @@ class ModelHandler():
         save_image_color_legend()
 
         # Optimizer
-        if config['data']['crowd'] and config['model']['method']!='prob-unet':
+        if config['model']['method']=='confusion_matrix':
             optimizer = torch.optim.Adam([
                 {'params': model.seg_model.parameters()},
                 {'params': model.crowd_layers.parameters(), 'lr': 1e-3}
@@ -115,23 +125,19 @@ class ModelHandler():
                 # Foward+loss (crowd or not)
                 _, labels = torch.max(labels, dim=1)
 
-                if config['model']['method'] != 'conf_matrix':
-                    if config['model']['method'] == 'prob-unet':
-                        # labels = torch.unsqueeze(labels, 1)
-                        model.forward(images, labels, training=True)
-                        loss = model.combined_loss(labels, loss_fct)
-                        y_pred = model.reconstruction
-
-                    elif config['model']['method'] == 'supervised':
-                        y_pred = model(images)
-                        loss = loss_fct(y_pred, labels)
-                    #
-                    if j % int(config['logging']['interval']) == 0:
-                        print("Iter {}/{} - batch loss : {:.4f}".format(j, len(trainloader), loss))
-                        self.log_training_metrics(y_pred, labels, loss, model, i * len(trainloader) * batch_s + j)
-                    self.store_train_imgs(imagename, images, labels, y_pred)
-
-                else:
+                if config['model']['method'] == 'prob-unet':
+                    # labels = torch.unsqueeze(labels, 1)
+                    model.forward(images, labels, training=True)
+                    loss = model.combined_loss(labels, loss_fct)
+                    y_pred = model.reconstruction
+                elif config['model']['method'] == 'pionono':
+                    model.forward(images, ann_ids)
+                    loss = model.combined_loss(labels, loss_fct)
+                    y_pred = model.sample(testing=True)
+                elif config['model']['method'] == 'supervised':
+                    y_pred = model(images)
+                    loss = loss_fct(y_pred, labels)
+                elif config['model']['method'] == 'conf_matrix':
                     if i == 5:  # 10 for cr_image_dice // 5 rest of the methods
                         print("Minimize trace activated!")
                         min_trace = True
@@ -143,7 +149,16 @@ class ModelHandler():
                         ], lr=learning_rate)
                     y_pred, cms = model(images, ann_ids)
                     loss, loss_ce, loss_trace = noisy_label_loss(y_pred, cms, labels, ignore_index,
-                                                                 config['model']['min_trace'], self.alpha, self.loss_mode)
+                                                                 config['model']['min_trace'], self.alpha,
+                                                                 self.loss_mode)
+                else:
+                    print('Choose valid model method!')
+
+                if config['model']['method'] != 'conf_matrix':
+                    if j % int(config['logging']['interval']) == 0:
+                        print("Iter {}/{} - batch loss : {:.4f}".format(j, len(trainloader), loss))
+                        self.log_training_metrics(y_pred, labels, loss, model, i * len(trainloader) * batch_s + j)
+                    self.store_train_imgs(imagename, images, labels, y_pred)
 
                 # Backprop
                 if not torch.isnan(loss):
@@ -169,7 +184,7 @@ class ModelHandler():
                     g['lr'] = g['lr'] / (1 + config['model']['lr_decay_param'])
 
             # Show annotator matrix
-            if config['data']['crowd'] and config['model']['method']!='prob-unet':
+            if config['data']['crowd'] and config['model']['method']=='conf_matrix':
                 _,  ann_id = torch.max(ann_ids, dim=1)
                 for ann_ix, cm in enumerate(cms):
                     cm = cm.view(5,5,512,512)
@@ -180,7 +195,7 @@ class ModelHandler():
 
 
         # Final evaluation of crowd
-        if config['data']['crowd'] and config['model']['method']!='prob-unet':
+        if config['data']['crowd'] and config['model']['method']=='conf_matrix':
             self.evaluate_confusion_matrix_model(trainloader, mode='train')
 
     def test(self, testloader):
@@ -210,13 +225,14 @@ class ModelHandler():
         preds = []
 
         with torch.no_grad():
-            for j, (test_img, test_label, test_name, _) in enumerate(evaluatedata):
+            for j, (test_img, test_label, test_name, ann_id) in enumerate(evaluatedata):
                 test_img = test_img.to(device=device, dtype=torch.float32)
                 if config['model']['method'] == 'prob-unet':
                     model.forward(test_img, None, training=False)
                     test_pred = model.sample(testing=True)
-                elif globals.config['data']['crowd']:
-                    test_pred, _ = model(test_img)
+                elif config['model']['method'] == 'pionono':
+                    model.forward(test_img, annotator=None)
+                    test_pred = model.sample(testing=True)
                 else:
                     test_pred = model(test_img)
                 _, test_pred = torch.max(test_pred[:, 0:class_no], dim=1)

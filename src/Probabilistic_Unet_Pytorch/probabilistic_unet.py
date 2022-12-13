@@ -6,7 +6,7 @@ from Probabilistic_Unet_Pytorch.unet import Unet
 from Probabilistic_Unet_Pytorch.utils import init_weights,init_weights_orthogonal_normal, l2_regularisation
 import torch.nn.functional as F
 from torch.distributions import Normal, Independent, kl
-from utils.segmentation_backbone import create_segmentation_backbone
+from utils.model_headless import UnetHeadless
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -181,19 +181,6 @@ class Fcomb(nn.Module):
 
 
 
-class OurUnet(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.seg_model = create_segmentation_backbone()
-
-    def forward(self, x):
-        x = self.seg_model.encoder(x)
-        x = self.seg_model.decoder(*x)
-        # x = self.seg_model(x)
-        return x
-
-
-
 class ProbabilisticUnet(nn.Module):
     """
     A probabilistic UNet (https://arxiv.org/abs/1806.05034) implementation.
@@ -220,7 +207,7 @@ class ProbabilisticUnet(nn.Module):
         if self.original_backbone:
             self.unet = Unet(self.input_channels, self.num_classes, self.num_filters, self.initializers, apply_last_layer=False, padding=True).to(device)
         else:
-            self.unet = OurUnet().to(device)
+            self.unet = UnetHeadless().to(device)
         self.prior = AxisAlignedConvGaussian(self.input_channels, self.num_filters, self.no_convs_per_block, self.latent_dim,  self.initializers,).to(device)
         self.posterior = AxisAlignedConvGaussian(self.input_channels, self.num_filters, self.no_convs_per_block, self.latent_dim, self.initializers, posterior=True).to(device)
         self.fcomb = Fcomb(self.num_filters, self.latent_dim, self.input_channels, self.num_classes, self.no_convs_fcomb, {'w':'orthogonal', 'b':'normal'}, use_tile=True).to(device)
@@ -299,7 +286,6 @@ class ProbabilisticUnet(nn.Module):
         segm = segm.squeeze(1)
         reconstruction_loss = criterion(input=self.reconstruction, target=segm)
         self.reconstruction_loss = torch.sum(reconstruction_loss)
-        self.mean_reconstruction_loss = torch.mean(reconstruction_loss)
 
         return -(self.reconstruction_loss + self.beta * self.kl)
 
