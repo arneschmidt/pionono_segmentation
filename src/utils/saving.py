@@ -77,6 +77,7 @@ def save_crowd_images(test_imgs:torch.Tensor, gt_pred: np.array, test_preds: np.
     plt.matshow(cm)
     out_path = os.path.join(dir, annotator + '_matrix_' + test_name)
     plt.savefig(out_path)
+    plt.close()
 
     mlflow.log_artifacts(dir, visual_dir)
 
@@ -101,6 +102,7 @@ def save_image_color_legend():
         ax.axis('off')
     plt.savefig(dir + 'legend.png')
     mlflow.log_artifact(dir + 'legend.png', 'qualitative_results')
+    plt.close()
 
 
 def convert_classes_to_rgb(seg_classes, h, w):
@@ -128,3 +130,61 @@ def save_results(results):
         writer = csv.writer(csv_file)
         for key, value in results.items():
             writer.writerow([key, value])
+
+
+def save_grad_flow(named_parameters):
+    '''Plots the gradients flowing through different layers in the net during training.
+    Can be used for checking for possible gradient vanishing / exploding problems.
+
+    Usage: Plug this function in Trainer class after loss.backwards() as
+    "plot_grad_flow(self.model.named_parameters())" to visualize the gradient flow'''
+    seg_model_ave_grads = []
+    seg_model_max_grads = []
+    seg_model_layers = []
+    fcomb_ave_grads = []
+    fcomb_max_grads = []
+    fcomb_layers = []
+    z_ave_grads = []
+    z_max_grads = []
+    z_layers = []
+    for n, p in named_parameters:
+        if(p.requires_grad) and ("bias" not in n) and p.grad is not None:
+            if 'seg_model' in n or 'unet' in n:
+                seg_model_layers.append(n)
+                seg_model_ave_grads.append(p.grad.abs().mean().cpu().detach().numpy())
+                seg_model_max_grads.append(p.grad.abs().max().cpu().detach().numpy())
+            elif 'fcomb' in n:
+                fcomb_layers.append(n)
+                fcomb_ave_grads.append(p.grad.abs().mean().cpu().detach().numpy())
+                fcomb_max_grads.append(p.grad.abs().max().cpu().detach().numpy())
+            else:
+                z_layers.append(n)
+                z_ave_grads.append(p.grad.abs().mean().cpu().detach().numpy())
+                z_max_grads.append(p.grad.abs().max().cpu().detach().numpy())
+        # print(n)
+    plot_gradients(seg_model_ave_grads, seg_model_max_grads, seg_model_layers, name='gradients_seg_model.jpg')
+    plot_gradients(fcomb_ave_grads, fcomb_max_grads, fcomb_layers, name='gradients_fcomb.jpg')
+    plot_gradients(z_ave_grads, z_max_grads, z_layers, name='gradients_z.jpg')
+    mlflow.log_artifacts(globals.config['logging']['experiment_folder'])
+
+def plot_gradients(ave_grads, max_grads, layers, name):
+    foldername = 'gradients'
+    plt.figure()
+    plt.bar(np.arange(len(max_grads)), max_grads, alpha=0.5, lw=2, color="c")
+    plt.bar(np.arange(len(max_grads)), ave_grads, alpha=0.5, lw=2, color="b")
+    plt.hlines(0, 0, len(ave_grads) + 1, lw=3, color="k")
+    plt.xticks(range(0, len(ave_grads), 1), layers, rotation="vertical")
+    plt.xlim(left=-1, right=len(ave_grads))
+    # plt.ylim(bottom=-0.001, top=0.02)  # zoom in on the lower gradient regions
+    plt.xlabel("Layers")
+    plt.ylabel("average gradient")
+    plt.title("Gradient flow")
+    plt.grid(True)
+    plt.legend([plt.Line2D([0], [0], color="c", lw=4),
+                plt.Line2D([0], [0], color="b", lw=4),
+                plt.Line2D([0], [0], color="k", lw=4)], ['max-gradient', 'mean-gradient', 'zero-gradient'])
+    dir = os.path.join(globals.config['logging']['experiment_folder'], foldername)
+    os.makedirs(dir, exist_ok=True)
+    path = os.path.join(dir, name)
+    plt.savefig(path)
+    plt.close()

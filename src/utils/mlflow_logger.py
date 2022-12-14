@@ -1,4 +1,6 @@
 from typing import Dict
+
+import matplotlib.pyplot as plt
 import mlflow
 
 import utils.globals
@@ -32,4 +34,21 @@ def log_results(results, mode, step=None):
         formatted_results[new_key] = results[key]
 
     mlflow.log_metrics(formatted_results, step=step)
+
+
+def probabilistic_model_logging(model, step):
+    method = utils.globals.config['model']['method']
+    loss_dict = {}
+    if method == 'prob-unet':
+        loss_dict['loss_reconstruction'] = float(model.reconstruction_loss.cpu().detach().numpy())
+        loss_dict['loss_kl'] = float((model.kl * model.beta).cpu().detach().numpy())
+        loss_dict['loss_regularization'] = float(model.reg_loss.cpu().detach().numpy())
+    elif method == 'pionono':
+        loss_dict['loss_log_likelihood'] = float(model.log_likelihood_loss.cpu().detach().numpy())
+        loss_dict['loss_kl'] = float(model.kl_loss.cpu().detach().numpy())
+        loss_dict['loss_regularization'] = float(model.reg_loss.cpu().detach().numpy())
+    mlflow.log_metrics(loss_dict, step=step)
+
+
+
 

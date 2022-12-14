@@ -12,20 +12,80 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # TODO:
 # replace AxisAlignedConvGaussian with a simple gaussian
 # replace VAE-like training with simple forward training
+#
+# class LatentVariableOld(nn.Module):
+#     """
+#
+#     """
+#     def __init__(self, num_annotators, latent_dims=2, prior_mu=0.0, prior_sigma=1.0):
+#         super(LatentVariable, self).__init__()
+#         self.latent_dims = latent_dims
+#         self.no_annotators = num_annotators
+#         self.prior_distribution = self._init_distributions(prior_mu=prior_mu, prior_sigma=prior_sigma, trainable=False)
+#         self.posterior_distribution = self._init_distributions(prior_mu=prior_mu, prior_sigma=prior_sigma, trainable=True)
+#         self.name = 'LatentVariable'
+#
+#     def _init_distributions(self, prior_mu=0.0, prior_sigma=1.0, trainable=True):
+#         dist_list = []
+#         for a in range(self.no_annotators):
+#             if isinstance(prior_mu, list):
+#                 mu = prior_mu[a]
+#                 sigma = prior_sigma[a]
+#             else:
+#                 mu = prior_mu
+#                 sigma = prior_sigma
+#             loc = torch.nn.Parameter(torch.ones(self.latent_dims)*mu) #.to_device(device)
+#             cov = torch.nn.Parameter(torch.eye(self.latent_dims) * torch.tensor(sigma*sigma)) #.to_device(device)
+#             if not trainable:
+#                 loc.requires_grad = False
+#                 cov.requires_grad = False
+#             dist = torch.distributions.multivariate_normal.MultivariateNormal(loc,
+#                                                                               scale_tril=torch.tril(cov))
+#             dist_list.append(dist)
+#         return dist_list
+#
+#     def forward(self, annotator, sample=True):
+#         z = torch.zeros([len(annotator), self.latent_dims]).to(device)
+#         for i in range(len(annotator)):
+#             a = annotator[i]
+#             dist_a = self.posterior_distribution[a]
+#
+#             if sample:
+#                 z_i = dist_a.rsample()
+#             else:
+#                 z_i = dist_a.loc
+#             z[i] = z_i
+#         return z
+#
+#     def get_kl_loss(self, annotator):
+#         kl_loss = torch.zeros([len(annotator)]).to(device)
+#         for i in range(len(annotator)):
+#             a = annotator[i]
+#             kl_loss[i] = torch.distributions.kl_divergence(self.posterior_distribution[a], self.prior_distribution[a])
+#         kl_mean = torch.mean(kl_loss)
+#         return kl_mean
 
 class LatentVariable(nn.Module):
     """
 
     """
-    def __init__(self, num_annotators, latent_dims=2, prior_mu=0.0, prior_sigma=1.0):
+    def __init__(self, num_annotators, latent_dims=2, prior_mu_value=0.0, prior_sigma_value=1.0):
         super(LatentVariable, self).__init__()
         self.latent_dims = latent_dims
         self.no_annotators = num_annotators
-        self.prior_distribution = self._init_distributions(prior_mu=prior_mu, prior_sigma=prior_sigma, trainable=False)
-        self.posterior_distribution = self._init_distributions(prior_mu=prior_mu, prior_sigma=prior_sigma, trainable=True)
+        prior_mu, prior_cov = self._init_distributions(prior_mu=prior_mu_value, prior_sigma=prior_sigma_value)
+        self.prior_mu = torch.nn.Parameter(prior_mu)
+        self.prior_cov = torch.nn.Parameter(prior_cov)
+        self.prior_mu.requires_grad = False
+        self.prior_cov.requires_grad = False
+        posterior_mu, posterior_cov = self._init_distributions(prior_mu=prior_mu_value, prior_sigma=prior_sigma_value)
+        self.posterior_mu = torch.nn.Parameter(posterior_mu)
+        self.posterior_cov = torch.nn.Parameter(posterior_cov)
+        self.name = 'LatentVariable'
 
     def _init_distributions(self, prior_mu=0.0, prior_sigma=1.0, trainable=True):
-        dist_list = []
+        mu_list = []
+        cov_list = []
         for a in range(self.no_annotators):
             if isinstance(prior_mu, list):
                 mu = prior_mu[a]
@@ -33,21 +93,20 @@ class LatentVariable(nn.Module):
             else:
                 mu = prior_mu
                 sigma = prior_sigma
-            loc = torch.nn.Parameter(torch.ones(self.latent_dims)*mu) #.to_device(device)
-            cov = torch.nn.Parameter(torch.eye(self.latent_dims) * torch.tensor(sigma*sigma)) #.to_device(device)
-            if not trainable:
-                loc.requires_grad = False
-                cov.requires_grad = False
-            dist = torch.distributions.multivariate_normal.MultivariateNormal(loc,
-                                                                              scale_tril=torch.tril(cov))
-            dist_list.append(dist)
-        return dist_list
+            mu_a = np.ones(self.latent_dims)*mu
+            cov_a = np.eye(self.latent_dims) * (sigma*sigma)
+            mu_list.append(mu_a)
+            cov_list.append(cov_a)
+        mu_list = torch.tensor(np.array(mu_list))
+        cov_list = torch.tensor(np.array(cov_list))
+        return mu_list, cov_list
 
     def forward(self, annotator, sample=True):
         z = torch.zeros([len(annotator), self.latent_dims]).to(device)
         for i in range(len(annotator)):
             a = annotator[i]
-            dist_a = self.posterior_distribution[a]
+            dist_a = torch.distributions.multivariate_normal.MultivariateNormal(self.posterior_mu[a],
+                                                                                scale_tril=torch.tril(self.posterior_cov[a]))
 
             if sample:
                 z_i = dist_a.rsample()
@@ -60,7 +119,12 @@ class LatentVariable(nn.Module):
         kl_loss = torch.zeros([len(annotator)]).to(device)
         for i in range(len(annotator)):
             a = annotator[i]
-            kl_loss[i] = torch.distributions.kl_divergence(self.posterior_distribution[a], self.prior_distribution[a])
+            dist_a_posterior = torch.distributions.multivariate_normal.MultivariateNormal(self.posterior_mu[a],
+                                                                                          scale_tril=torch.tril(self.posterior_cov[a]))
+            dist_a_prior = torch.distributions.multivariate_normal.MultivariateNormal(self.prior_mu[a],
+                                                                                scale_tril=torch.tril(self.prior_cov[a]))
+
+            kl_loss[i] = torch.distributions.kl_divergence(dist_a_posterior, dist_a_prior)
         kl_mean = torch.mean(kl_loss)
         return kl_mean
 
@@ -160,29 +224,29 @@ class PiononoModel(nn.Module):
         self.kl_factor = kl_factor
         self.reg_factor = reg_factor
         self.unet = UnetHeadless().to(device)
-        self.z = LatentVariable(num_annotators, latent_dim, prior_mu=z_prior_mu, prior_sigma=z_prior_sigma).to(device)
+        self.z = LatentVariable(num_annotators, latent_dim, prior_mu_value=z_prior_mu, prior_sigma_value=z_prior_sigma).to(device)
         self.fcomb = MyFcomb(16, self.latent_dim, self.input_channels, self.num_classes,
                              self.no_convs_fcomb, {'w' :'orthogonal', 'b' :'normal'}, use_tile=True).to(device)
 
-    def forward(self, patch, annotator=None):
+    def forward(self, patch):
         """
         Construct prior latent space for patch and run patch through UNet,
         in case training is True also construct posterior latent space
         """
         self.unet_features = self.unet.forward(patch)
-        if annotator is None:
-            annotator = torch.ones(patch.shape[0]).to(device) * self.predict_annotator
-        self.current_annotator = annotator.int() #torch.argmax(annotator, dim=1).int()
 
-    def sample(self, testing=False):
+    def sample(self, testing=False, annotator=None):
         """
         Sample a segmentation by reconstructing from a prior sample
         and combining this with UNet features
         """
+        if annotator is None:
+            annotator = torch.ones(self.unet_features.shape[0]).to(device) * self.predict_annotator
+
         if testing == False:
-            z = self.z.forward(self.current_annotator, sample=True)
+            z = self.z.forward(annotator, sample=True)
         else:
-            z = self.z.forward(self.current_annotator, sample=False)
+            z = self.z.forward(annotator.int(), sample=False)
         pred = self.fcomb.forward(self.unet_features, z)
 
         return pred
@@ -191,11 +255,11 @@ class PiononoModel(nn.Module):
         """
         Calculate the evidence lower bound of the log-likelihood of P(Y|X)
         """
-        preds = self.sample()
-        log_likelihood_loss = loss_fct(preds, labels)
-        kl_loss = self.z.get_kl_loss(self.current_annotator)
+        self.preds = self.sample()
+        self.log_likelihood_loss = loss_fct(self.preds, labels)
+        self.kl_loss = self.z.get_kl_loss(self.current_annotator) * self.kl_factor
 
-        return -(log_likelihood_loss + self.kl_factor * kl_loss)
+        return -(self.log_likelihood_loss + self.kl_loss)
 
     def combined_loss(self, labels, loss_fct):
         elbo = self.elbo(labels, loss_fct=loss_fct)

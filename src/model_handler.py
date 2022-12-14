@@ -10,10 +10,10 @@ from Probabilistic_Unet_Pytorch.probabilistic_unet import ProbabilisticUnet
 from utils.model_pionono import PiononoModel
 from segmentation_models_pytorch.losses import DiceLoss, FocalLoss
 import utils.globals as globals
-from utils.saving import save_model, save_results, save_test_images, save_image_color_legend, save_crowd_images
+from utils.saving import save_model, save_results, save_test_images, save_image_color_legend, save_crowd_images, save_grad_flow
 from utils.loss import noisy_label_loss
 from utils.test_helpers import segmentation_scores
-from utils.mlflow_logger import log_results
+from utils.mlflow_logger import log_results, probabilistic_model_logging
 
 eps=1e-7
 
@@ -133,7 +133,7 @@ class ModelHandler():
                 elif config['model']['method'] == 'pionono':
                     model.forward(images, ann_ids)
                     loss = model.combined_loss(labels, loss_fct)
-                    y_pred = model.sample(testing=True)
+                    y_pred = model.preds
                 elif config['model']['method'] == 'supervised':
                     y_pred = model(images)
                     loss = loss_fct(y_pred, labels)
@@ -163,10 +163,11 @@ class ModelHandler():
                 # Backprop
                 if not torch.isnan(loss):
                     loss.backward()
+
                     optimizer.step()
 
             self.save_train_imgs()
-
+            save_grad_flow(model.named_parameters())
             # Save validation results
             val_results = self.evaluate(validateloader, mode='val')  # TODO: validate crowd
             log_results(val_results, mode='val', step=int((i + 1) * len(trainloader) * batch_s))
@@ -223,6 +224,9 @@ class ModelHandler():
 
         labels = []
         preds = []
+
+        inter_observer_variations = []
+        intra_observer_variations = []
 
         with torch.no_grad():
             for j, (test_img, test_label, test_name, ann_id) in enumerate(evaluatedata):
@@ -403,17 +407,10 @@ class ModelHandler():
     def log_training_metrics(self, y_pred, labels, loss, model, step):
         config = globals.config
         _, y_pred = torch.max(y_pred[:, 0:config['data']['class_no']], dim=1)
-        # print('CE loss:' + str(model.reconstruction_loss) + ' KL loss: ' + str(
-        #     model.kl) + ' Reg loss: ' + str(reg_loss))
-        loss_dict ={}
-        loss_dict['loss'] = float(loss.cpu().detach().numpy())
-        if globals.config['model']['method'] == 'prob-unet':
-            loss_dict['loss_reconstruction'] = float(model.reconstruction_loss.cpu().detach().numpy())
-            loss_dict['loss_kl'] = float((model.kl * model.beta).cpu().detach().numpy())
-            loss_dict['loss_regularization'] = float(model.reg_loss.cpu().detach().numpy())
-        mlflow.log_metrics(loss_dict)
+        mlflow.log_metric('loss',float(loss.cpu().detach().numpy()), step=step)
         train_results = self.get_results(y_pred, labels)
         log_results(train_results, mode='train', step=step)
+        probabilistic_model_logging(model, step)
 
     def store_train_imgs(self, imagenames, images, labels, y_pred):
         config = globals.config
