@@ -228,25 +228,26 @@ class PiononoModel(nn.Module):
         self.fcomb = MyFcomb(16, self.latent_dim, self.input_channels, self.num_classes,
                              self.no_convs_fcomb, {'w' :'orthogonal', 'b' :'normal'}, use_tile=True).to(device)
 
-    def forward(self, patch):
+    # TODO: move annotator to sample function
+    def forward(self, patch, annotator=None):
         """
         Construct prior latent space for patch and run patch through UNet,
         in case training is True also construct posterior latent space
         """
         self.unet_features = self.unet.forward(patch)
+        if annotator is None:
+            annotator = torch.ones(patch.shape[0]).to(device) * self.predict_annotator
+        self.current_annotator = annotator.int() #torch.argmax(annotator, dim=1).int()
 
-    def sample(self, testing=False, annotator=None):
+    def sample(self, testing=False):
         """
         Sample a segmentation by reconstructing from a prior sample
         and combining this with UNet features
         """
-        if annotator is None:
-            annotator = torch.ones(self.unet_features.shape[0]).to(device) * self.predict_annotator
-
         if testing == False:
-            z = self.z.forward(annotator, sample=True)
+            z = self.z.forward(self.current_annotator, sample=True)
         else:
-            z = self.z.forward(annotator.int(), sample=False)
+            z = self.z.forward(self.current_annotator, sample=False)
         pred = self.fcomb.forward(self.unet_features, z)
 
         return pred
