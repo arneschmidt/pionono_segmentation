@@ -66,12 +66,12 @@ def save_test_image_variability(model, test_name, k, mode):
             mean_pred = model.sample(use_z_mean=True, annotator=annotator)
             _, mean_pred = torch.max(mean_pred[:, 0:class_no], dim=1)
             mean_pred_k = convert_classes_to_rgb(mean_pred[k].cpu().detach().numpy())
-            out_path = os.path.join(a_dir, 'pred_mean_' + test_name[k])
+            out_path = os.path.join(a_dir, 'pred_' + test_name[k].replace(".png", "_mean" + ".png"))
             imageio.imsave(out_path, mean_pred_k)
             for s in range(no_samples_per_annotator -1):
                 pred = model.sample(use_z_mean=False, annotator=annotator)
                 _, pred = torch.max(pred[:, 0:class_no], dim=1)
-                out_path = os.path.join(a_dir, 'pred_' + test_name[k] + '_s_' + str(s))
+                out_path = os.path.join(a_dir, 'pred_' + test_name[k].replace(".png", "_s_" + str(s) + ".png"))
                 pred_k = convert_classes_to_rgb(pred[k].cpu().detach().numpy())
                 imageio.imsave(out_path, pred_k)
 
