@@ -247,12 +247,12 @@ class ModelHandler():
 
                 preds.append(test_pred_np.astype(np.int8).copy().flatten())
                 labels.append(test_label.astype(np.int8).copy().flatten())
-
-                for k in range(len(test_name)):
-                    if test_name[k] in vis_images or vis_images == 'all':
-                        img = test_img[k]
-                        save_test_images(img, test_pred_np[k], test_label[k], test_name[k], mode)
-                        save_test_image_variability(model, test_name, k, mode)
+                if mode == 'test':
+                    for k in range(len(test_name)):
+                        if test_name[k] in vis_images or vis_images == 'all':
+                            img = test_img[k]
+                            save_test_images(img, test_pred_np[k], test_label[k], test_name[k], mode)
+                            save_test_image_variability(model, test_name, k, mode)
 
             preds = np.concatenate(preds, axis=0, dtype=np.int8).flatten()
             labels = np.concatenate(labels, axis=0, dtype=np.int8).flatten()
@@ -417,12 +417,13 @@ class ModelHandler():
     def store_train_imgs(self, imagenames, images, labels, y_pred):
         config = globals.config
         vis_train_images = config['data']['visualize_images']['train']
-        _, y_pred = torch.max(y_pred[:, 0:config['data']['class_no']], dim=1)
+
         for k in range(len(imagenames)):
             if imagenames[k] in vis_train_images:
+                _, y_pred_argmax_k = torch.max(y_pred[k][:, 0:config['data']['class_no']], dim=0)
                 self.train_img_vis.append(images[k])
                 self.train_label_vis.append(labels[k].cpu().detach().numpy())
-                self.train_pred_vis.append(y_pred[k].cpu().detach().numpy())
+                self.train_pred_vis.append(y_pred_argmax_k.cpu().detach().numpy())
                 self.train_img_name.append(imagenames[k])
 
                 # if len(y_pred[k].cpu().detach().numpy().shape) == 1:

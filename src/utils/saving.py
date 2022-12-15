@@ -48,7 +48,7 @@ def save_test_images(test_imgs:torch.Tensor, test_preds: np.array, test_labels: 
 
 
 def save_test_image_variability(model, test_name, k, mode):
-    no_samples_per_annotator = 10
+    no_samples_per_annotator = 6
     annotators = globals.config['data']['train']['masks']
     method = globals.config['model']['method']
     class_no = globals.config['data']['class_no']
