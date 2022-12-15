@@ -417,14 +417,16 @@ class ModelHandler():
     def store_train_imgs(self, imagenames, images, labels, y_pred):
         config = globals.config
         vis_train_images = config['data']['visualize_images']['train']
-
+        _, y_pred = torch.max(y_pred[:, 0:config['data']['class_no']], dim=1)
         for k in range(len(imagenames)):
             if imagenames[k] in vis_train_images:
-                _, y_pred = torch.max(y_pred[:, 0:config['data']['class_no']], dim=1)
                 self.train_img_vis.append(images[k])
                 self.train_label_vis.append(labels[k].cpu().detach().numpy())
                 self.train_pred_vis.append(y_pred[k].cpu().detach().numpy())
                 self.train_img_name.append(imagenames[k])
+
+                # if len(y_pred[k].cpu().detach().numpy().shape) == 1:
+                #     print(y_pred[k])
 
     def save_train_imgs(self):
         for i in range(len(self.train_img_vis)):

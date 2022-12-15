@@ -29,7 +29,6 @@ def save_test_images(test_imgs:torch.Tensor, test_preds: np.array, test_labels: 
 
     if len(test_labels.shape) == 3:
         test_labels = test_labels[0]
-    h, w = np.shape(test_labels)
 
     test_preds = np.asarray(test_preds, dtype=np.uint8)
     test_labels = np.asarray(test_labels, dtype=np.uint8)
