@@ -10,7 +10,8 @@ from Probabilistic_Unet_Pytorch.probabilistic_unet import ProbabilisticUnet
 from utils.model_pionono import PiononoModel
 from segmentation_models_pytorch.losses import DiceLoss, FocalLoss
 import utils.globals as globals
-from utils.saving import save_model, save_results, save_test_images, save_image_color_legend, save_crowd_images, save_grad_flow
+from utils.saving import save_model, save_results, save_test_images, save_image_color_legend, save_crowd_images, \
+    save_grad_flow, save_test_image_variability
 from utils.loss import noisy_label_loss
 from utils.test_helpers import segmentation_scores
 from utils.mlflow_logger import log_results, probabilistic_model_logging
@@ -131,8 +132,8 @@ class ModelHandler():
                     loss = model.combined_loss(labels, loss_fct)
                     y_pred = model.reconstruction
                 elif config['model']['method'] == 'pionono':
-                    model.forward(images, ann_ids)
-                    loss = model.combined_loss(labels, loss_fct)
+                    model.forward(images)
+                    loss = model.combined_loss(labels, loss_fct, ann_ids)
                     y_pred = model.preds
                 elif config['model']['method'] == 'supervised':
                     y_pred = model(images)
@@ -235,8 +236,8 @@ class ModelHandler():
                     model.forward(test_img, None, training=False)
                     test_pred = model.sample(testing=True)
                 elif config['model']['method'] == 'pionono':
-                    model.forward(test_img, annotator=None)
-                    test_pred = model.sample(testing=True)
+                    model.forward(test_img)
+                    test_pred = model.sample(use_z_mean=True)
                 else:
                     test_pred = model(test_img)
                 _, test_pred = torch.max(test_pred[:, 0:class_no], dim=1)
@@ -251,6 +252,7 @@ class ModelHandler():
                     if test_name[k] in vis_images or vis_images == 'all':
                         img = test_img[k]
                         save_test_images(img, test_pred_np[k], test_label[k], test_name[k], mode)
+                        save_test_image_variability(model, test_name, k, mode)
 
             preds = np.concatenate(preds, axis=0, dtype=np.int8).flatten()
             labels = np.concatenate(labels, axis=0, dtype=np.int8).flatten()

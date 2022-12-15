@@ -21,6 +21,7 @@ def save_model(model):
     torch.save(model, out_path)
     print('Best Model saved!')
 
+
 def save_test_images(test_imgs:torch.Tensor, test_preds: np.array, test_labels: np.array, test_name: np.array, mode: str):
     visual_dir = 'qualitative_results/' + mode
     dir = os.path.join(globals.config['logging']['experiment_folder'], visual_dir)
@@ -37,22 +38,48 @@ def save_test_images(test_imgs:torch.Tensor, test_preds: np.array, test_labels: 
     out_path = os.path.join(dir, 'img_' + test_name)
     save_image(test_imgs, out_path)
 
-    test_pred_rgb = convert_classes_to_rgb(test_preds, h, w)
+    test_pred_rgb = convert_classes_to_rgb(test_preds)
     out_path = os.path.join(dir, 'pred_' + test_name)
     imageio.imsave(out_path, test_pred_rgb)
 
-    test_label_rgb = convert_classes_to_rgb(test_labels, h, w)
+    test_label_rgb = convert_classes_to_rgb(test_labels)
     out_path = os.path.join(dir, 'gt_' + test_name)
     imageio.imsave(out_path, test_label_rgb)
     mlflow.log_artifacts(dir, visual_dir)
+
+
+def save_test_image_variability(model, test_name, k, mode):
+    no_samples_per_annotator = 10
+    annotators = globals.config['data']['train']['masks']
+    method = globals.config['model']['method']
+    class_no = globals.config['data']['class_no']
+    visual_dir = 'qualitative_results/' + mode
+    dir = os.path.join(globals.config['logging']['experiment_folder'], visual_dir)
+    dir = os.path.join(dir, 'variability')
+    os.makedirs(dir, exist_ok=True)
+    if method == 'pionono':
+        for i in range(len(annotators)):
+            a = annotators[i]
+            a_dir = os.path.join(dir, a)
+            os.makedirs(a_dir, exist_ok=True)
+            annotator = torch.ones(model.unet_features.shape[0]) * i
+            mean_pred = model.sample(use_z_mean=True, annotator=annotator)
+            _, mean_pred = torch.max(mean_pred[:, 0:class_no], dim=1)
+            mean_pred_k = convert_classes_to_rgb(mean_pred[k].cpu().detach().numpy())
+            out_path = os.path.join(a_dir, 'pred_mean_' + test_name[k])
+            imageio.imsave(out_path, mean_pred_k)
+            for s in range(no_samples_per_annotator -1):
+                pred = model.sample(use_z_mean=False, annotator=annotator)
+                _, pred = torch.max(pred[:, 0:class_no], dim=1)
+                out_path = os.path.join(a_dir, 'pred_' + str(s) + '_' + test_name[k])
+                pred_k = convert_classes_to_rgb(pred[k].cpu().detach().numpy())
+                imageio.imsave(out_path, pred_k)
 
 # TODO: funcion que guarde bien el crowdsourcing
 def save_crowd_images(test_imgs:torch.Tensor, gt_pred: np.array, test_preds: np.array, test_labels: np.array, test_name: np.array, annotator, cm):
     visual_dir = 'qualitative_results/' + "train_crowd"
     dir = os.path.join(globals.config['logging']['experiment_folder'], visual_dir)
     os.makedirs(dir, exist_ok=True)
-
-    h, w = np.shape(test_labels)
 
     test_preds = np.asarray(test_preds, dtype=np.uint8)
     test_labels = np.asarray(test_labels, dtype=np.uint8)
@@ -61,15 +88,15 @@ def save_crowd_images(test_imgs:torch.Tensor, gt_pred: np.array, test_preds: np.
     out_path = os.path.join(dir, 'img_' + test_name)
     save_image(test_imgs, out_path)
 
-    test_pred_rgb = convert_classes_to_rgb(test_preds, h, w)
+    test_pred_rgb = convert_classes_to_rgb(test_preds)
     out_path = os.path.join(dir, annotator + '_pred_' + test_name)
     imageio.imsave(out_path, test_pred_rgb)
 
-    gt_pred_rgb = convert_classes_to_rgb(gt_pred, h, w)
+    gt_pred_rgb = convert_classes_to_rgb(gt_pred)
     out_path = os.path.join(dir, 'gt_pred_' + test_name)
     imageio.imsave(out_path, gt_pred_rgb)
 
-    test_label_rgb = convert_classes_to_rgb(test_labels, h, w)
+    test_label_rgb = convert_classes_to_rgb(test_labels)
     out_path = os.path.join(dir, annotator + '_gt_' + test_name)
     imageio.imsave(out_path, test_label_rgb)
 
@@ -95,7 +122,7 @@ def save_image_color_legend():
 
     for class_id in range(class_no):
         # out_img[size*class_id:size*(class_id+1),:,:] = convert_classes_to_rgb(np.ones(size,size,3)*class_id, size,size)
-        out_img = convert_classes_to_rgb(np.ones(shape=[size,size])*class_id, size,size)
+        out_img = convert_classes_to_rgb(np.ones(shape=[size,size])*class_id)
         ax = fig.add_subplot(1, class_no, class_id+1)
         ax.imshow(out_img)
         ax.set_title(class_names[class_id])
@@ -105,8 +132,9 @@ def save_image_color_legend():
     plt.close()
 
 
-def convert_classes_to_rgb(seg_classes, h, w):
-
+def convert_classes_to_rgb(seg_classes):
+    h = seg_classes.shape[0]
+    w = seg_classes.shape[1]
     seg_rgb = np.zeros((h, w, 3), dtype=np.uint8)
     class_no = globals.config['data']['class_no']
 
