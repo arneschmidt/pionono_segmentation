@@ -71,7 +71,7 @@ def save_test_image_variability(model, test_name, k, mode):
             for s in range(no_samples_per_annotator -1):
                 pred = model.sample(use_z_mean=False, annotator=annotator)
                 _, pred = torch.max(pred[:, 0:class_no], dim=1)
-                out_path = os.path.join(a_dir, 'pred_' + str(s) + '_' + test_name[k])
+                out_path = os.path.join(a_dir, 'pred_' + test_name[k] + '_s_' + str(s))
                 pred_k = convert_classes_to_rgb(pred[k].cpu().detach().numpy())
                 imageio.imsave(out_path, pred_k)
 
