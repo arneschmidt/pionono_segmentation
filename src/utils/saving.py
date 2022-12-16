@@ -9,10 +9,11 @@ import numpy as np
 from torchvision.utils import save_image
 import matplotlib
 matplotlib.use('Agg')
+import numpy as np
 import matplotlib.pyplot as plt
-
+from scipy.stats import multivariate_normal
 import utils.globals as globals
-
+import matplotlib.colors as mcolors
 def save_model(model):
     model_dir = 'models'
     dir = os.path.join(globals.config['logging']['experiment_folder'], model_dir)
@@ -74,7 +75,66 @@ def save_test_image_variability(model, test_name, k, mode):
                 pred_k = convert_classes_to_rgb(pred[k].cpu().detach().numpy())
                 imageio.imsave(out_path, pred_k)
 
-# TODO: funcion que guarde bien el crowdsourcing
+def save_model_distributions(model):
+    dir_name = 'distributions'
+    dir_path = os.path.join(globals.config['logging']['experiment_folder'], dir_name)
+    os.makedirs(dir_path, exist_ok=True)
+    annotators = globals.config['data']['train']['masks']
+    method = globals.config['model']['method']
+    if method == 'pionono':
+        mu = model.z.posterior_mu.cpu().detach().numpy()
+        covtril = model.z.posterior_covtril.cpu().detach().numpy()
+        cov = np.zeros_like(covtril)
+        for i in range(len(annotators)):
+            cov[i] = np.matmul(covtril[i], covtril[i].transpose())
+            np.savetxt(os.path.join(dir_path, "mu_" + str(i) + ".csv" ), np.round(mu[i], 4), delimiter=",", fmt='%.5e')
+            np.savetxt(os.path.join(dir_path, "cov_" + str(i) + ".csv" ), np.round(cov[i], 4) , delimiter=",", fmt='%.5e')
+        plot_and_save_distributions(mu, cov, dir_path)
+    mlflow.log_artifacts(globals.config['logging']['experiment_folder'])
+
+def plot_and_save_distributions(mu_list, cov_list, dir_path):
+    plt.figure()
+    # plt.style.use('seaborn-dark')
+    # plt.rcParams['figure.figsize'] = 14, 14
+    no_annotators = mu_list.shape[0]
+
+    twodim_mu_list = np.zeros(shape=[no_annotators, 2])
+    twodim_cov_list = np.zeros(shape=[no_annotators, 2, 2])
+    for i in range(no_annotators):
+        twodim_mu_list[i] = mu_list[i][0:2]
+        twodim_cov_list[i] = cov_list[i][0:2, 0:2]
+
+    # Initializing the random seed
+    random_seed = 0
+
+    lim = np.max(twodim_cov_list) + np.max(twodim_mu_list) * 3
+    x = np.linspace(- lim, lim, num=100)
+    y = np.linspace(- lim, lim, num=100)
+    X, Y = np.meshgrid(x, y)
+
+    pdf_list = []
+
+    for i in range(no_annotators):
+        mean = twodim_mu_list[i]
+        cov = twodim_cov_list[i]
+        distr = multivariate_normal(cov=cov, mean=mean,
+                                    seed=random_seed)
+        pdf = np.zeros(X.shape)
+        for i in range(X.shape[0]):
+            for j in range(X.shape[1]):
+                pdf[i, j] = distr.pdf([X[i, j], Y[i, j]])
+        pdf_list.append(pdf)
+
+   # Plotting contour plots
+    colors = list(mcolors.TABLEAU_COLORS.keys())
+    for idx, val in enumerate(pdf_list):
+        contourline = np.max(val) * (3/4)
+        plt.contour(X, Y, val, levels=[contourline], colors=colors[idx], alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(os.path.join(dir_path, "dist_plot.jpg" ))
+    plt.close()
+
+
 def save_crowd_images(test_imgs:torch.Tensor, gt_pred: np.array, test_preds: np.array, test_labels: np.array, test_name: np.array, annotator, cm):
     visual_dir = 'qualitative_results/' + "train_crowd"
     dir = os.path.join(globals.config['logging']['experiment_folder'], visual_dir)

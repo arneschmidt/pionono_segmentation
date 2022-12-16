@@ -18,12 +18,12 @@ class LatentVariable(nn.Module):
         self.no_annotators = num_annotators
         prior_mu, prior_cov = self._init_distributions(prior_mu=prior_mu_value, prior_sigma=prior_sigma_value)
         self.prior_mu = torch.nn.Parameter(prior_mu)
-        self.prior_cov = torch.nn.Parameter(prior_cov)
+        self.prior_covtril = torch.nn.Parameter(prior_cov)
         self.prior_mu.requires_grad = False
-        self.prior_cov.requires_grad = False
+        self.prior_covtril.requires_grad = False
         posterior_mu, posterior_cov = self._init_distributions(prior_mu=prior_mu_value, prior_sigma=prior_sigma_value)
         self.posterior_mu = torch.nn.Parameter(posterior_mu)
-        self.posterior_cov = torch.nn.Parameter(posterior_cov)
+        self.posterior_covtril = torch.nn.Parameter(posterior_cov)
         self.name = 'LatentVariable'
 
     def _init_distributions(self, prior_mu=0.0, prior_sigma=1.0, trainable=True):
@@ -37,12 +37,14 @@ class LatentVariable(nn.Module):
                 mu = prior_mu
                 sigma = prior_sigma
             mu_a = np.ones(self.latent_dims)*mu
-            cov_a = np.eye(self.latent_dims) * (sigma*sigma)
+            # we use sigma values (instead of sigma+sigma) because we pass this matrix as tril matrix L
+            # this makes the sigma value of the cov matrix squared
+            cov_a = np.eye(self.latent_dims) * (sigma)
             mu_list.append(mu_a)
             cov_list.append(cov_a)
         mu_list = torch.tensor(np.array(mu_list))
-        cov_list = torch.tensor(np.array(cov_list))
-        return mu_list, cov_list
+        covtril_list = torch.tensor(np.array(cov_list))
+        return mu_list, covtril_list
 
     def forward(self, annotator, sample=True):
         z = torch.zeros([len(annotator), self.latent_dims]).to(device)
@@ -50,7 +52,7 @@ class LatentVariable(nn.Module):
         for i in range(len(annotator)):
             a = annotator[i]
             dist_a = torch.distributions.multivariate_normal.MultivariateNormal(self.posterior_mu[a],
-                                                                                scale_tril=torch.tril(self.posterior_cov[a]))
+                                                                                scale_tril=torch.tril(self.posterior_covtril[a]))
 
             if sample:
                 z_i = dist_a.rsample()
@@ -65,9 +67,9 @@ class LatentVariable(nn.Module):
         for i in range(len(annotator)):
             a = annotator[i]
             dist_a_posterior = torch.distributions.multivariate_normal.MultivariateNormal(self.posterior_mu[a],
-                                                                                          scale_tril=torch.tril(self.posterior_cov[a]))
+                                                                                          scale_tril=torch.tril(self.posterior_covtril[a]))
             dist_a_prior = torch.distributions.multivariate_normal.MultivariateNormal(self.prior_mu[a],
-                                                                                scale_tril=torch.tril(self.prior_cov[a]))
+                                                                                      scale_tril=torch.tril(self.prior_covtril[a]))
 
             kl_loss[i] = torch.distributions.kl_divergence(dist_a_posterior, dist_a_prior)
         kl_mean = torch.mean(kl_loss)

@@ -11,7 +11,7 @@ from utils.model_pionono import PiononoModel
 from segmentation_models_pytorch.losses import DiceLoss, FocalLoss
 import utils.globals as globals
 from utils.saving import save_model, save_results, save_test_images, save_image_color_legend, save_crowd_images, \
-    save_grad_flow, save_test_image_variability
+    save_grad_flow, save_test_image_variability, save_model_distributions
 from utils.loss import noisy_label_loss
 from utils.test_helpers import segmentation_scores
 from utils.mlflow_logger import log_results, probabilistic_model_logging
@@ -160,6 +160,7 @@ class ModelHandler():
                         print("Iter {}/{} - batch loss : {:.4f}".format(j, len(trainloader), loss))
                         self.log_training_metrics(y_pred, labels, loss, model, i * len(trainloader) * batch_s + j)
                     self.store_train_imgs(imagename, images, labels, y_pred)
+                    save_model_distributions(model)
 
                 # Backprop
                 if not torch.isnan(loss):
@@ -420,10 +421,10 @@ class ModelHandler():
 
         for k in range(len(imagenames)):
             if imagenames[k] in vis_train_images:
-                _, y_pred_argmax_k = torch.max(y_pred[k][:, 0:config['data']['class_no']], dim=0)
+                _, y_pred_argmax = torch.max(y_pred[:, 0:config['data']['class_no']], dim=1)
                 self.train_img_vis.append(images[k])
                 self.train_label_vis.append(labels[k].cpu().detach().numpy())
-                self.train_pred_vis.append(y_pred_argmax_k.cpu().detach().numpy())
+                self.train_pred_vis.append(y_pred_argmax[k].cpu().detach().numpy())
                 self.train_img_name.append(imagenames[k])
 
                 # if len(y_pred[k].cpu().detach().numpy().shape) == 1:
