@@ -12,7 +12,7 @@ class LatentVariable(nn.Module):
     """
 
     """
-    def __init__(self, num_annotators, latent_dims=2, prior_mu_value=0.0, prior_sigma_value=1.0):
+    def __init__(self, num_annotators, latent_dims=2, prior_mu_value=0.0, prior_sigma_value=1.0, z_posterior_init_sigma=0.0):
         super(LatentVariable, self).__init__()
         self.latent_dims = latent_dims
         self.no_annotators = num_annotators
@@ -21,20 +21,26 @@ class LatentVariable(nn.Module):
         self.prior_covtril = torch.nn.Parameter(prior_cov)
         self.prior_mu.requires_grad = False
         self.prior_covtril.requires_grad = False
-        posterior_mu, posterior_cov = self._init_distributions(prior_mu=prior_mu_value, prior_sigma=prior_sigma_value)
+        post_mu_value = np.random.standard_normal(size=[num_annotators, latent_dims])*z_posterior_init_sigma + prior_mu_value
+        post_sigma_value = prior_sigma_value
+        posterior_mu, posterior_cov = self._init_distributions(prior_mu=post_mu_value, prior_sigma=post_sigma_value)
         self.posterior_mu = torch.nn.Parameter(posterior_mu)
         self.posterior_covtril = torch.nn.Parameter(posterior_cov)
         self.name = 'LatentVariable'
 
-    def _init_distributions(self, prior_mu=0.0, prior_sigma=1.0, trainable=True):
+    def _init_distributions(self, prior_mu=np.array(0.0), prior_sigma=np.array(1.0)):
         mu_list = []
         cov_list = []
+        prior_mu = np.array(prior_mu)
+        prior_sigma = np.array(prior_sigma)
         for a in range(self.no_annotators):
-            if isinstance(prior_mu, list):
+            if prior_mu.size > 1:
                 mu = prior_mu[a]
-                sigma = prior_sigma[a]
             else:
                 mu = prior_mu
+            if prior_sigma.size > 1:
+                sigma = prior_sigma[a]
+            else:
                 sigma = prior_sigma
             mu_a = np.ones(self.latent_dims)*mu
             # we use sigma values (instead of sigma+sigma) because we pass this matrix as tril matrix L
@@ -160,7 +166,8 @@ class PiononoModel(nn.Module):
     """
 
     def __init__(self, input_channels=3, num_classes=1, num_annotators=6, predict_annotator=0, latent_dim=6,
-                 z_prior_mu=0.0, z_prior_sigma=1.0, no_convs_fcomb=4, kl_factor=1.0, reg_factor=0.1):
+                 z_prior_mu=0.0, z_prior_sigma=1.0, z_posterior_init_sigma=0.0, no_convs_fcomb=4, kl_factor=1.0,
+                 reg_factor=0.1):
         super(PiononoModel, self).__init__()
         self.input_channels = input_channels
         self.num_classes = num_classes
@@ -171,7 +178,8 @@ class PiononoModel(nn.Module):
         self.kl_factor = kl_factor
         self.reg_factor = reg_factor
         self.unet = UnetHeadless().to(device)
-        self.z = LatentVariable(num_annotators, latent_dim, prior_mu_value=z_prior_mu, prior_sigma_value=z_prior_sigma).to(device)
+        self.z = LatentVariable(num_annotators, latent_dim, prior_mu_value=z_prior_mu, prior_sigma_value=z_prior_sigma,
+                                z_posterior_init_sigma=z_posterior_init_sigma).to(device)
         self.fcomb = MyFcomb(16, self.latent_dim, self.input_channels, self.num_classes,
                              self.no_convs_fcomb, {'w' :'orthogonal', 'b' :'normal'}, use_tile=True).to(device)
 

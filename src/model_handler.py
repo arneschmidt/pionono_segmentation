@@ -14,7 +14,7 @@ from utils.saving import save_model, save_results, save_test_images, save_image_
     save_grad_flow, save_test_image_variability, save_model_distributions
 from utils.loss import noisy_label_loss
 from utils.test_helpers import segmentation_scores
-from utils.mlflow_logger import log_results, probabilistic_model_logging
+from utils.mlflow_logger import log_results, probabilistic_model_logging, set_epoch_output_dir
 
 eps=1e-7
 
@@ -26,6 +26,7 @@ class ModelHandler():
         self.train_label_vis = []
         self.train_pred_vis = []
         self.train_img_name = []
+        self.epoch = 0
         # architecture
 
         if config['model']['method'] == 'prob-unet':
@@ -42,6 +43,7 @@ class ModelHandler():
                                       latent_dim=config['model']['pionono_config']['latent_dim'],
                                       z_prior_mu=config['model']['pionono_config']['z_prior_mu'],
                                       z_prior_sigma=config['model']['pionono_config']['z_prior_sigma'],
+                                      z_posterior_init_sigma=config['model']['pionono_config']['z_posterior_mu_rand_sigma'],
                                       kl_factor=config['model']['pionono_config']['kl_factor'],
                                       reg_factor=config['model']['pionono_config']['reg_factor'])
         elif config['model']['method'] == 'confusion_matrix':
@@ -113,6 +115,8 @@ class ModelHandler():
         for i in range(0, epochs):
             print('\nEpoch: {}'.format(i))
             model.train()
+            set_epoch_output_dir(i)
+            self.epoch = i
             # Training in batches
             for j, (images, labels, imagename, ann_ids) in enumerate(trainloader):
                 # Loading data to GPU
@@ -160,7 +164,6 @@ class ModelHandler():
                         print("Iter {}/{} - batch loss : {:.4f}".format(j, len(trainloader), loss))
                         self.log_training_metrics(y_pred, labels, loss, model, i * len(trainloader) * batch_s + j)
                     self.store_train_imgs(imagename, images, labels, y_pred)
-                    save_model_distributions(model)
 
                 # Backprop
                 if not torch.isnan(loss):
@@ -168,18 +171,23 @@ class ModelHandler():
 
                     optimizer.step()
 
-            self.save_train_imgs()
-            save_grad_flow(model.named_parameters())
+
             # Save validation results
             val_results = self.evaluate(validateloader, mode='val')  # TODO: validate crowd
             log_results(val_results, mode='val', step=int((i + 1) * len(trainloader) * batch_s))
-            mlflow.log_metric('finished_epochs', i + 1, int((i + 1) * len(trainloader) * batch_s))
-
+            mlflow.log_metric('finished_epochs', self.epoch + 1, int((i + 1) * len(trainloader) * batch_s))
             # Save model
             metric_for_saving = val_results['macro_dice']
             if max_score < metric_for_saving and i > 10:
                 save_model(model)
                 max_score = metric_for_saving
+
+            if i % int(config['logging']['artifact_interval']) == 0:
+                save_model_distributions(model)
+                save_grad_flow(model.named_parameters())
+                self.save_train_imgs()
+
+            mlflow.log_artifacts(globals.config['logging']['experiment_folder'])
 
             # LR decay
             if i > config['model']['lr_decay_after_epoch']:
@@ -187,7 +195,7 @@ class ModelHandler():
                     g['lr'] = g['lr'] / (1 + config['model']['lr_decay_param'])
 
             # Show annotator matrix
-            if config['data']['crowd'] and config['model']['method']=='conf_matrix':
+            if config['data']['crowd'] and config['model']['method'] == 'conf_matrix':
                 _,  ann_id = torch.max(ann_ids, dim=1)
                 for ann_ix, cm in enumerate(cms):
                     cm = cm.view(5,5,512,512)
@@ -206,6 +214,7 @@ class ModelHandler():
         results = self.evaluate(testloader)
         log_results(results, mode='test', step=None)
         save_results(results)
+        mlflow.log_artifacts(globals.config['logging']['experiment_folder'])
 
     def evaluate(self, evaluatedata, mode='test'):
         config = globals.config
@@ -248,7 +257,7 @@ class ModelHandler():
 
                 preds.append(test_pred_np.astype(np.int8).copy().flatten())
                 labels.append(test_label.astype(np.int8).copy().flatten())
-                if mode == 'test':
+                if self.epoch % int(config['logging']['artifact_interval']) == 0:
                     for k in range(len(test_name)):
                         if test_name[k] in vis_images or vis_images == 'all':
                             img = test_img[k]

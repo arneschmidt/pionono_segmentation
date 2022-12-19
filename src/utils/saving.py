@@ -25,7 +25,7 @@ def save_model(model):
 
 def save_test_images(test_imgs:torch.Tensor, test_preds: np.array, test_labels: np.array, test_name: np.array, mode: str):
     visual_dir = 'qualitative_results/' + mode
-    dir = os.path.join(globals.config['logging']['experiment_folder'], visual_dir)
+    dir = os.path.join(globals.config['logging']['experiment_epoch_folder'], visual_dir)
     os.makedirs(dir, exist_ok=True)
 
     if len(test_labels.shape) == 3:
@@ -45,7 +45,6 @@ def save_test_images(test_imgs:torch.Tensor, test_preds: np.array, test_labels: 
     test_label_rgb = convert_classes_to_rgb(test_labels)
     out_path = os.path.join(dir, 'gt_' + test_name)
     imageio.imsave(out_path, test_label_rgb)
-    mlflow.log_artifacts(dir, visual_dir)
 
 
 def save_test_image_variability(model, test_name, k, mode):
@@ -54,7 +53,7 @@ def save_test_image_variability(model, test_name, k, mode):
     method = globals.config['model']['method']
     class_no = globals.config['data']['class_no']
     visual_dir = 'qualitative_results/' + mode
-    dir = os.path.join(globals.config['logging']['experiment_folder'], visual_dir)
+    dir = os.path.join(globals.config['logging']['experiment_epoch_folder'], visual_dir)
     dir = os.path.join(dir, 'variability')
     os.makedirs(dir, exist_ok=True)
     if method == 'pionono':
@@ -77,7 +76,7 @@ def save_test_image_variability(model, test_name, k, mode):
 
 def save_model_distributions(model):
     dir_name = 'distributions'
-    dir_path = os.path.join(globals.config['logging']['experiment_folder'], dir_name)
+    dir_path = os.path.join(globals.config['logging']['experiment_epoch_folder'], dir_name)
     os.makedirs(dir_path, exist_ok=True)
     annotators = globals.config['data']['train']['masks']
     method = globals.config['model']['method']
@@ -87,10 +86,9 @@ def save_model_distributions(model):
         cov = np.zeros_like(covtril)
         for i in range(len(annotators)):
             cov[i] = np.matmul(covtril[i], covtril[i].transpose())
-            np.savetxt(os.path.join(dir_path, "mu_" + str(i) + ".csv" ), np.round(mu[i], 4), delimiter=",", fmt='%.5e')
-            np.savetxt(os.path.join(dir_path, "cov_" + str(i) + ".csv" ), np.round(cov[i], 4) , delimiter=",", fmt='%.5e')
+            np.savetxt(os.path.join(dir_path, "mu_" + str(i) + ".csv" ), np.round(mu[i], 4), delimiter=",", fmt="%.3f")
+            np.savetxt(os.path.join(dir_path, "cov_" + str(i) + ".csv" ), np.round(cov[i], 4) , delimiter=",", fmt="%.3f")
         plot_and_save_distributions(mu, cov, dir_path)
-    mlflow.log_artifacts(globals.config['logging']['experiment_folder'])
 
 def plot_and_save_distributions(mu_list, cov_list, dir_path):
     plt.figure()
@@ -107,7 +105,7 @@ def plot_and_save_distributions(mu_list, cov_list, dir_path):
     # Initializing the random seed
     random_seed = 0
 
-    lim = np.max(twodim_cov_list) + np.max(twodim_mu_list) * 3
+    lim = np.max(twodim_mu_list) + np.max(twodim_cov_list) * 3
     x = np.linspace(- lim, lim, num=100)
     y = np.linspace(- lim, lim, num=100)
     X, Y = np.meshgrid(x, y)
@@ -129,7 +127,7 @@ def plot_and_save_distributions(mu_list, cov_list, dir_path):
     colors = list(mcolors.TABLEAU_COLORS.keys())
     for idx, val in enumerate(pdf_list):
         contourline = np.max(val) * (3/4)
-        plt.contour(X, Y, val, levels=[contourline], colors=colors[idx], alpha=0.3)
+        plt.contour(X, Y, val, levels=[contourline], colors=colors[idx], alpha=0.7)
     plt.tight_layout()
     plt.savefig(os.path.join(dir_path, "dist_plot.jpg" ))
     plt.close()
@@ -137,7 +135,7 @@ def plot_and_save_distributions(mu_list, cov_list, dir_path):
 
 def save_crowd_images(test_imgs:torch.Tensor, gt_pred: np.array, test_preds: np.array, test_labels: np.array, test_name: np.array, annotator, cm):
     visual_dir = 'qualitative_results/' + "train_crowd"
-    dir = os.path.join(globals.config['logging']['experiment_folder'], visual_dir)
+    dir = os.path.join(globals.config['logging']['experiment_epoch_folder'], visual_dir)
     os.makedirs(dir, exist_ok=True)
 
     test_preds = np.asarray(test_preds, dtype=np.uint8)
@@ -165,12 +163,10 @@ def save_crowd_images(test_imgs:torch.Tensor, gt_pred: np.array, test_preds: np.
     plt.savefig(out_path)
     plt.close()
 
-    mlflow.log_artifacts(dir, visual_dir)
-
 
 def save_image_color_legend():
-    visual_dir = 'qualitative_results/'
-    dir = os.path.join(globals.config['logging']['experiment_folder'], visual_dir)
+    # visual_dir = 'qualitative_results/'
+    dir = globals.config['logging']['experiment_folder']
     os.makedirs(dir, exist_ok=True)
     class_no = globals.config['data']['class_no']
     class_names = globals.config['data']['class_names']
@@ -187,7 +183,6 @@ def save_image_color_legend():
         ax.set_title(class_names[class_id])
         ax.axis('off')
     plt.savefig(dir + 'legend.png')
-    mlflow.log_artifact(dir + 'legend.png', 'qualitative_results')
     plt.close()
 
 
@@ -209,7 +204,7 @@ def convert_classes_to_rgb(seg_classes):
 
 def save_results(results):
     results_dir = 'quantitative_results'
-    dir = os.path.join(globals.config['logging']['experiment_folder'], results_dir)
+    dir = os.path.join(globals.config['logging']['experiment_epoch_folder'], results_dir)
     os.makedirs(dir, exist_ok=True)
     out_path = os.path.join(dir, 'results.csv')
 
@@ -252,7 +247,6 @@ def save_grad_flow(named_parameters):
     plot_gradients(seg_model_ave_grads, seg_model_max_grads, seg_model_layers, name='gradients_seg_model.jpg')
     plot_gradients(fcomb_ave_grads, fcomb_max_grads, fcomb_layers, name='gradients_fcomb.jpg')
     plot_gradients(z_ave_grads, z_max_grads, z_layers, name='gradients_z.jpg')
-    mlflow.log_artifacts(globals.config['logging']['experiment_folder'])
 
 def plot_gradients(ave_grads, max_grads, layers, name):
     foldername = 'gradients'
@@ -270,7 +264,7 @@ def plot_gradients(ave_grads, max_grads, layers, name):
     plt.legend([plt.Line2D([0], [0], color="c", lw=4),
                 plt.Line2D([0], [0], color="b", lw=4),
                 plt.Line2D([0], [0], color="k", lw=4)], ['max-gradient', 'mean-gradient', 'zero-gradient'])
-    dir = os.path.join(globals.config['logging']['experiment_folder'], foldername)
+    dir = os.path.join(globals.config['logging']['experiment_epoch_folder'], foldername)
     os.makedirs(dir, exist_ok=True)
     path = os.path.join(dir, name)
     plt.savefig(path)

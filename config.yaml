@@ -2,7 +2,7 @@ model:
   seed: 0
   batch_size: 2
   optimizer: adam # sgd_mom, adam
-  epochs: 60
+  epochs: 20
   loss: dice # ce, dice, focal
   learning_rate: 0.0001
   lr_decay_after_epoch: 20
@@ -15,16 +15,17 @@ model:
     activation: softmax # softmax or None
   method: pionono # supervised, prob-unet, conf_matrix, pionono
   prob_unet_config:
-    original_backbone: True # use original prob-unet backbone (overwrites above configuration of backbone)
+    original_backbone: False # use original prob-unet backbone (overwrites above configuration of backbone)
     kl_factor: 1.0
     reg_factor: 0.00001
     latent_dim: 6
   pionono_config:
     kl_factor: 0.1
     reg_factor: 0.00001
-    latent_dim: 6
+    latent_dim: 2
     z_prior_mu: 0.0
-    z_prior_sigma: 0.1
+    z_prior_sigma: 0.5
+    z_posterior_mu_rand_sigma: 0.5 # sigma of random initializer for posterior mean
     gold_annotator: 6
   conf_matrix_config:
     min_trace: False
@@ -32,7 +33,8 @@ model:
     alpha: 0.4
 
 logging:
-  interval: 10
+  interval: 10 # steps of train logging (in number of batches)
+  artifact_interval: 10 # steps of artifact (e.g. visualization) logging (in number of epochs)
   mlruns_folder: /work/work_arne/mlflow_server # http://127.0.0.1:5002
   tags:
     stage: initial

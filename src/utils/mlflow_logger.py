@@ -1,12 +1,13 @@
 from typing import Dict
 
+import os
 import matplotlib.pyplot as plt
 import mlflow
 
-import utils.globals
+import utils.globals as globals
 
 def start_logging():
-    config = utils.globals.config
+    config = globals.config
     mlflow.set_tracking_uri(config["logging"]["mlruns_folder"])
 
     data_config_log = config['data'].copy()
@@ -24,7 +25,6 @@ def start_logging():
     mlflow.set_tags(config['logging']['tags'])
     mlflow.log_artifact('config.yaml')
 
-
 def log_results(results, mode, step=None):
 
     formatted_results = {}
@@ -36,8 +36,14 @@ def log_results(results, mode, step=None):
     mlflow.log_metrics(formatted_results, step=step)
 
 
+def set_epoch_output_dir(epoch: int):
+    if epoch % int(globals.config['logging']['artifact_interval']) == 0:
+        dir = os.path.join(globals.config['logging']['experiment_folder'], str(epoch))
+        globals.config['logging']['experiment_epoch_folder'] = dir
+        os.makedirs(dir)
+
 def probabilistic_model_logging(model, step):
-    method = utils.globals.config['model']['method']
+    method = globals.config['model']['method']
     loss_dict = {}
     if method == 'prob-unet':
         loss_dict['loss_reconstruction'] = float(model.reconstruction_loss.cpu().detach().numpy())
