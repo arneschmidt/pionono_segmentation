@@ -173,7 +173,6 @@ class PiononoModel(nn.Module):
         self.num_classes = num_classes
         self.latent_dim = latent_dim
         self.predict_annotator = predict_annotator
-        self.no_convs_per_block = 3
         self.no_head_layers = no_head_layers
         self.kl_factor = kl_factor
         self.reg_factor = reg_factor
@@ -210,12 +209,12 @@ class PiononoModel(nn.Module):
         return pred
 
     def mc_sampling(self, annotator: torch.tensor = None):
-        samples_list = []
-        for _ in range(self.mc_samples):
-            samples_list.append(self.sample(use_z_mean=False, annotator=annotator))
-        out_samples = torch.stack(samples_list)
-        mean = torch.mean(out_samples, dim=0)
-        var = torch.var(out_samples, dim=0)
+        shape = [self.mc_samples, annotator.shape[0], self.num_classes, self.unet_features.shape[-2], self.unet_features.shape[-1]]
+        samples = torch.zeros(shape).to(device)
+        for i in range(self.mc_samples):
+            samples[i] = self.sample(use_z_mean=False, annotator=annotator)
+        mean = torch.mean(samples, dim=0)
+        var = torch.var(samples, dim=0)
         return mean, var
 
     def elbo(self, labels: torch.tensor, loss_fct, annotator: torch.tensor):

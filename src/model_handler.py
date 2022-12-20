@@ -260,7 +260,7 @@ class ModelHandler():
 
                 preds.append(test_pred_np.astype(np.int8).copy().flatten())
                 labels.append(test_label.astype(np.int8).copy().flatten())
-                if self.epoch % int(config['logging']['artifact_interval']) == 0:
+                if self.epoch % int(config['logging']['artifact_interval']) == 0 or mode == 'test':
                     for k in range(len(test_name)):
                         if test_name[k] in vis_images or vis_images == 'all':
                             img = test_img[k]

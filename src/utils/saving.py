@@ -15,8 +15,9 @@ from scipy.stats import multivariate_normal
 import utils.globals as globals
 import matplotlib.colors as mcolors
 
-# for classes: NC, GG3, GG4, GG5, background in BGR
-CLASS_COLORS = [[128, 255, 96], [32, 224, 255], [16, 160, 255], [0, 0, 255], [192, 192, 192]]
+# for classes: NC, GG3, GG4, GG5, background
+CLASS_COLORS_BGR = [[128, 255, 96], [32, 224, 255], [16, 160, 255], [0, 0, 255], [192, 192, 192]]
+CLASS_COLORS_RGB = [[96, 255, 128], [255, 224, 32], [255, 160, 16], [255, 0, 0], [192, 192, 192]]
 
 def save_model(model):
     model_dir = 'models'
@@ -197,12 +198,10 @@ def convert_classes_to_rgb(seg_classes):
     class_no = globals.config['data']['class_no']
     # for classes: NC, GG3, GG4, GG5, background
     # colors = [[0,179,255], [153,0,0], [255,102,204], [0,153,51], [153,0,204]]
-
-
     for class_id in range(class_no):
-        seg_rgb[:, :, 0][seg_classes == class_id] = CLASS_COLORS[class_id][0]
-        seg_rgb[:, :, 1][seg_classes == class_id] = CLASS_COLORS[class_id][1]
-        seg_rgb[:, :, 2][seg_classes == class_id] = CLASS_COLORS[class_id][2]
+        seg_rgb[:, :, 0][seg_classes == class_id] = CLASS_COLORS_RGB[class_id][0]
+        seg_rgb[:, :, 1][seg_classes == class_id] = CLASS_COLORS_RGB[class_id][1]
+        seg_rgb[:, :, 2][seg_classes == class_id] = CLASS_COLORS_RGB[class_id][2]
 
     return seg_rgb
 

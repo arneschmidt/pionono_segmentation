@@ -5,9 +5,8 @@ import shutil
 import random
 import numpy as np
 from scipy import stats
-from utils.saving import CLASS_COLORS
+from utils.saving import CLASS_COLORS_BGR
 
-import SimpleITK as sitk
 
 parser = argparse.ArgumentParser(description="Resize Images of prostate TMA")
 parser.add_argument("--input_dir", "-i", type=str,
@@ -19,7 +18,8 @@ parser.add_argument("--output_dir", "-o", type=str,
 args = parser.parse_args()
 
 map_dir = 'Maps/'
-map_annotator_dirs = ['Maps1_T/', 'Maps2_T/', 'Maps3_T/', 'Maps4_T/', 'Maps5_T/', 'Maps6_T/']
+# map_annotator_dirs = ['Maps1_T/', 'Maps2_T/', 'Maps3_T/', 'Maps4_T/', 'Maps5_T/', 'Maps6_T/', 'STAPLE/', 'MV/']
+map_annotator_dirs = ['STAPLE/', 'MV/']
 
 
 os.makedirs(args.output_dir, exist_ok=True)
@@ -42,8 +42,8 @@ for m in range(len(map_annotator_dirs)):
         # classes : 0 (normal tissue), 1 (GG3), 2 (GG4), 3 (GG5), 4 (background)
         ones = np.ones_like(image)
 
-        for c in range(len(CLASS_COLORS)):
-            image = np.where(image==c, ones*CLASS_COLORS[c], image)
+        for c in range(len(CLASS_COLORS_BGR)):
+            image = np.where(image==c, ones*CLASS_COLORS_BGR[c], image)
 
         assert np.all(image >= 0)
         assert np.all(image <= 255)

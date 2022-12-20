@@ -2,8 +2,9 @@
 # make correct cross validation
 # implement staple
 # IDEAS: use F * (1 + z) instead of [F, z]
-# log mean weights of z in fcomb
-# take 10 MC samples during training
+#
+# today: set up experiments with best performing model, find expressive test images
+# tomorrow: implement model freezing
 
 
 import os
