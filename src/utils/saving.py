@@ -14,6 +14,10 @@ import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
 import utils.globals as globals
 import matplotlib.colors as mcolors
+
+# for classes: NC, GG3, GG4, GG5, background in BGR
+CLASS_COLORS = [[128, 255, 96], [32, 224, 255], [16, 160, 255], [0, 0, 255], [192, 192, 192]]
+
 def save_model(model):
     model_dir = 'models'
     dir = os.path.join(globals.config['logging']['experiment_folder'], model_dir)
@@ -182,7 +186,7 @@ def save_image_color_legend():
         ax.imshow(out_img)
         ax.set_title(class_names[class_id])
         ax.axis('off')
-    plt.savefig(dir + 'legend.png')
+    plt.savefig(os.path.join(dir, 'legend.png'))
     plt.close()
 
 
@@ -191,13 +195,14 @@ def convert_classes_to_rgb(seg_classes):
     w = seg_classes.shape[1]
     seg_rgb = np.zeros((h, w, 3), dtype=np.uint8)
     class_no = globals.config['data']['class_no']
+    # for classes: NC, GG3, GG4, GG5, background
+    # colors = [[0,179,255], [153,0,0], [255,102,204], [0,153,51], [153,0,204]]
 
-    colors = [[0,179,255], [153,0,0], [255,102,204], [0,153,51], [153,0,204]]
 
     for class_id in range(class_no):
-        seg_rgb[:, :, 0][seg_classes == class_id] = colors[class_id][0]
-        seg_rgb[:, :, 1][seg_classes == class_id] = colors[class_id][1]
-        seg_rgb[:, :, 2][seg_classes == class_id] = colors[class_id][2]
+        seg_rgb[:, :, 0][seg_classes == class_id] = CLASS_COLORS[class_id][0]
+        seg_rgb[:, :, 1][seg_classes == class_id] = CLASS_COLORS[class_id][1]
+        seg_rgb[:, :, 2][seg_classes == class_id] = CLASS_COLORS[class_id][2]
 
     return seg_rgb
 

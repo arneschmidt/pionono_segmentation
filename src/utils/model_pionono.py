@@ -82,13 +82,13 @@ class LatentVariable(nn.Module):
         return kl_mean
 
 
-class MyFcomb(nn.Module):
+class PiononoHead(nn.Module):
     """
     A function composed of no_convs_fcomb times a 1x1 convolution that combines the sample taken from the latent space,
     and output of the UNet (the feature map) by concatenating them along their channel axis.
     """
-    def __init__(self, num_filters_last_layer, latent_dim, num_output_channels, num_classes, no_convs_fcomb, initializers, use_tile=True):
-        super(MyFcomb, self).__init__()
+    def __init__(self, num_filters_last_layer, latent_dim, num_output_channels, num_classes, no_convs_fcomb, use_tile=True):
+        super(PiononoHead, self).__init__()
         self.num_channels = num_output_channels #output channels
         self.num_classes = num_classes
         self.channel_axis = 1
@@ -97,7 +97,7 @@ class MyFcomb(nn.Module):
         self.latent_dim = latent_dim
         self.use_tile = use_tile
         self.no_convs_fcomb = no_convs_fcomb
-        self.name = 'Fcomb'
+        self.name = 'PiononoHead'
 
         if self.use_tile:
             layers = []
@@ -166,22 +166,23 @@ class PiononoModel(nn.Module):
     """
 
     def __init__(self, input_channels=3, num_classes=1, num_annotators=6, predict_annotator=0, latent_dim=6,
-                 z_prior_mu=0.0, z_prior_sigma=1.0, z_posterior_init_sigma=0.0, no_convs_fcomb=4, kl_factor=1.0,
-                 reg_factor=0.1):
+                 z_prior_mu=0.0, z_prior_sigma=1.0, z_posterior_init_sigma=0.0, no_head_layers=4, kl_factor=1.0,
+                 reg_factor=0.1, mc_samples=5):
         super(PiononoModel, self).__init__()
         self.input_channels = input_channels
         self.num_classes = num_classes
         self.latent_dim = latent_dim
         self.predict_annotator = predict_annotator
         self.no_convs_per_block = 3
-        self.no_convs_fcomb = no_convs_fcomb
+        self.no_head_layers = no_head_layers
         self.kl_factor = kl_factor
         self.reg_factor = reg_factor
+        self.mc_samples = mc_samples
         self.unet = UnetHeadless().to(device)
         self.z = LatentVariable(num_annotators, latent_dim, prior_mu_value=z_prior_mu, prior_sigma_value=z_prior_sigma,
                                 z_posterior_init_sigma=z_posterior_init_sigma).to(device)
-        self.fcomb = MyFcomb(16, self.latent_dim, self.input_channels, self.num_classes,
-                             self.no_convs_fcomb, {'w' :'orthogonal', 'b' :'normal'}, use_tile=True).to(device)
+        self.head = PiononoHead(16, self.latent_dim, self.input_channels, self.num_classes,
+                                self.no_head_layers, use_tile=True).to(device)
 
     # TODO: move annotator to sample function
     def forward(self, patch):
@@ -204,13 +205,13 @@ class PiononoModel(nn.Module):
             z = self.z.forward(self.current_annotator, sample=True)
         else:
             z = self.z.forward(self.current_annotator, sample=False)
-        pred = self.fcomb.forward(self.unet_features, z)
+        pred = self.head.forward(self.unet_features, z)
 
         return pred
 
-    def mc_sampling(self, num_mc_samples: 10 = int, annotator: torch.tensor = None):
+    def mc_sampling(self, annotator: torch.tensor = None):
         samples_list = []
-        for _ in range(num_mc_samples):
+        for _ in range(self.mc_samples):
             samples_list.append(self.sample(use_z_mean=False, annotator=annotator))
         out_samples = torch.stack(samples_list)
         mean = torch.mean(out_samples, dim=0)
@@ -222,7 +223,7 @@ class PiononoModel(nn.Module):
         Calculate the evidence lower bound of the log-likelihood of P(Y|X)
         """
         # self.preds = self.sample(use_z_mean=False, annotator=annotator)
-        self.preds, _ = self.mc_sampling(num_mc_samples=10, annotator=annotator)
+        self.preds, _ = self.mc_sampling(annotator=annotator)
         self.log_likelihood_loss = loss_fct(self.preds, labels)
         self.kl_loss = self.z.get_kl_loss(annotator) * self.kl_factor
 
@@ -230,6 +231,6 @@ class PiononoModel(nn.Module):
 
     def combined_loss(self, labels, loss_fct, annotator):
         elbo = self.elbo(labels, loss_fct=loss_fct, annotator=annotator)
-        self.reg_loss = l2_regularisation(self.fcomb.layers) * self.reg_factor
+        self.reg_loss = l2_regularisation(self.head.layers) * self.reg_factor
         loss = -elbo + self.reg_loss
         return loss

@@ -44,8 +44,11 @@ class ModelHandler():
                                       z_prior_mu=config['model']['pionono_config']['z_prior_mu'],
                                       z_prior_sigma=config['model']['pionono_config']['z_prior_sigma'],
                                       z_posterior_init_sigma=config['model']['pionono_config']['z_posterior_mu_rand_sigma'],
+                                      no_head_layers=config['model']['pionono_config']['no_head_layers'],
                                       kl_factor=config['model']['pionono_config']['kl_factor'],
-                                      reg_factor=config['model']['pionono_config']['reg_factor'])
+                                      reg_factor=config['model']['pionono_config']['reg_factor'],
+                                      mc_samples=config['model']['pionono_config']['mc_samples']
+                                      )
         elif config['model']['method'] == 'confusion_matrix':
             self.model = Crowd_segmentationModel(annotators)
             self.alpha = 1
