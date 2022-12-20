@@ -208,11 +208,21 @@ class PiononoModel(nn.Module):
 
         return pred
 
+    def mc_sampling(self, num_mc_samples: 10 = int, annotator: torch.tensor = None):
+        samples_list = []
+        for _ in range(num_mc_samples):
+            samples_list.append(self.sample(use_z_mean=False, annotator=annotator))
+        out_samples = torch.stack(samples_list)
+        mean = torch.mean(out_samples, dim=0)
+        var = torch.var(out_samples, dim=0)
+        return mean, var
+
     def elbo(self, labels: torch.tensor, loss_fct, annotator: torch.tensor):
         """
         Calculate the evidence lower bound of the log-likelihood of P(Y|X)
         """
-        self.preds = self.sample(use_z_mean=False, annotator=annotator)
+        # self.preds = self.sample(use_z_mean=False, annotator=annotator)
+        self.preds, _ = self.mc_sampling(num_mc_samples=10, annotator=annotator)
         self.log_likelihood_loss = loss_fct(self.preds, labels)
         self.kl_loss = self.z.get_kl_loss(annotator) * self.kl_factor
 
