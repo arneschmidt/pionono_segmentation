@@ -1,6 +1,6 @@
 data:
   dataset_name: gleason19_crowdsourcing
-  crowd: False
+  crowd: True
   sr_experiment: False
   class_no: 5
   class_names: ['NC', 'GG3', 'GG4', 'GG5', 'other']

@@ -14,7 +14,7 @@ from utils.saving import save_model, save_results, save_test_images, save_image_
     save_grad_flow, save_test_image_variability, save_model_distributions
 from utils.loss import noisy_label_loss
 from utils.test_helpers import segmentation_scores
-from utils.mlflow_logger import log_results, probabilistic_model_logging, set_epoch_output_dir
+from utils.mlflow_logger import log_results, probabilistic_model_logging, set_epoch_output_dir, set_test_output_dir
 
 eps=1e-7
 
@@ -213,6 +213,7 @@ class ModelHandler():
             self.evaluate_confusion_matrix_model(trainloader, mode='train')
 
     def test(self, testloader):
+        set_test_output_dir()
         save_image_color_legend()
         results = self.evaluate(testloader)
         log_results(results, mode='test', step=None)

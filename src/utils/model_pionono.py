@@ -97,7 +97,7 @@ class PiononoHead(nn.Module):
         self.latent_dim = latent_dim
         self.use_tile = use_tile
         self.no_convs_fcomb = no_convs_fcomb
-        self.name = 'PiononoHead'
+        self.name = 'piononohead'
 
         if self.use_tile:
             layers = []

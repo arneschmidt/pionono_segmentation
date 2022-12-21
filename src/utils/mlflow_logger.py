@@ -42,6 +42,12 @@ def set_epoch_output_dir(epoch: int):
         globals.config['logging']['experiment_epoch_folder'] = dir
         os.makedirs(dir)
 
+
+def set_test_output_dir():
+    dir = os.path.join(globals.config['logging']['experiment_folder'], 'test')
+    globals.config['logging']['experiment_epoch_folder'] = dir
+    os.makedirs(dir)
+
 def probabilistic_model_logging(model, step):
     method = globals.config['model']['method']
     loss_dict = {}
