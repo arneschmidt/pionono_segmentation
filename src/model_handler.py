@@ -120,6 +120,12 @@ class ModelHandler():
             model.train()
             set_epoch_output_dir(i)
             self.epoch = i
+            if i % int(config['model']['pionono_config']['phase_epochs']) == 0 and i > 0 and config['model']['method'] == 'pionono':
+                model.switch_phase()
+                optimizer = torch.optim.Adam([
+                    dict(params=model.parameters(), lr=config['model']['pionono_config']['phase_z_learning_rate']),
+                ])
+
             # Training in batches
             for j, (images, labels, imagename, ann_ids) in enumerate(trainloader):
                 # Loading data to GPU
@@ -171,9 +177,7 @@ class ModelHandler():
                 # Backprop
                 if not torch.isnan(loss):
                     loss.backward()
-
                     optimizer.step()
-
 
             # Save validation results
             val_results = self.evaluate(validateloader, mode='val')  # TODO: validate crowd

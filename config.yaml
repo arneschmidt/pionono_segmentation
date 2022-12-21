@@ -1,10 +1,10 @@
 model:
   seed: 0
-  batch_size: 2
+  batch_size: 4
   optimizer: adam # sgd_mom, adam
   epochs: 80
   loss: dice # ce, dice, focal
-  learning_rate: 0.0001
+  learning_rate: 0.001
   lr_decay_after_epoch: 40
   lr_decay_param: 0.1
   backbone: unet # unet, linknet
@@ -29,6 +29,8 @@ model:
     z_prior_sigma: 2.0
     z_posterior_mu_rand_sigma: 4.0 # sigma of random initializer for posterior mean
     gold_annotator: 6
+    phase_epochs: 1 # phases consist of training everything and training only z, -1 for disabling
+    phase_z_learning_rate: 0.001
   conf_matrix_config:
     min_trace: False
     identity_reg: False
@@ -36,7 +38,7 @@ model:
 
 logging:
   interval: 10 # steps of train logging (in number of batches)
-  artifact_interval: 10 # steps of artifact (e.g. visualization) logging (in number of epochs)
+  artifact_interval: 1 # steps of artifact (e.g. visualization) logging (in number of epochs)
   mlruns_folder: /work/work_arne/mlflow_server # http://127.0.0.1:5002
   tags:
     stage: initial

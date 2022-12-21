@@ -109,7 +109,7 @@ def plot_and_save_distributions(mu_list, cov_list, dir_path):
     # Initializing the random seed
     random_seed = 0
 
-    lim = np.max(twodim_mu_list) + np.max(twodim_cov_list) * 3
+    lim = np.max(np.abs(twodim_mu_list)) * 2 + np.max(np.abs(twodim_mu_list))
     x = np.linspace(- lim, lim, num=100)
     y = np.linspace(- lim, lim, num=100)
     X, Y = np.meshgrid(x, y)
@@ -238,7 +238,7 @@ def save_grad_flow(named_parameters):
                 seg_model_layers.append(n)
                 seg_model_ave_grads.append(p.grad.abs().mean().cpu().detach().numpy())
                 seg_model_max_grads.append(p.grad.abs().max().cpu().detach().numpy())
-            elif 'piononohead' in n or 'fcomb' in n:
+            elif 'head' in n or 'fcomb' in n:
                 fcomb_layers.append(n)
                 fcomb_ave_grads.append(p.grad.abs().mean().cpu().detach().numpy())
                 fcomb_max_grads.append(p.grad.abs().max().cpu().detach().numpy())

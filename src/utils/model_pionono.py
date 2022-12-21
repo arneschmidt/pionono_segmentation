@@ -97,7 +97,7 @@ class PiononoHead(nn.Module):
         self.latent_dim = latent_dim
         self.use_tile = use_tile
         self.no_convs_fcomb = no_convs_fcomb
-        self.name = 'piononohead'
+        self.name = 'PiononoHead'
 
         if self.use_tile:
             layers = []
@@ -182,6 +182,8 @@ class PiononoModel(nn.Module):
                                 z_posterior_init_sigma=z_posterior_init_sigma).to(device)
         self.head = PiononoHead(16, self.latent_dim, self.input_channels, self.num_classes,
                                 self.no_head_layers, use_tile=True).to(device)
+        self.phase = 'segmentation'
+        self.name = 'PiononoModel'
 
     # TODO: move annotator to sample function
     def forward(self, patch):
@@ -233,3 +235,22 @@ class PiononoModel(nn.Module):
         self.reg_loss = l2_regularisation(self.head.layers) * self.reg_factor
         loss = -elbo + self.reg_loss
         return loss
+
+    def switch_phase(self):
+        # if previous phase is segmentation, switch to distribution and disable grads
+        if self.phase == 'segmentation':
+            self.phase = 'distribution'
+            grad_bool = False
+        # if previous phase is distribution, switch to segmentation and enable grads
+        else:
+            self.phase = 'segmentation'
+            grad_bool = True
+
+        named_params = self.named_parameters()
+        for n, p in named_params:
+            if 'unet' in n or 'head' in n:
+                p.requires_grad = grad_bool
+            #     print('IN: ' + n)
+            # else:
+            #     print('OUT: ' + n)
+
