@@ -84,19 +84,25 @@ class ModelHandler():
         save_image_color_legend()
 
         # Optimizer
-        if config['model']['method']=='confusion_matrix':
-            optimizer = torch.optim.Adam([
+
+        if config['model']['method'] == 'pionono':
+            opt_params = [
+                {'params': model.unet.parameters()},
+                {'params': model.head.parameters()},
+                {'params': model.z.parameters(), 'lr': config['model']['pionono_config']['z_learning_rate']}
+            ]
+        elif config['model']['method'] == 'confusion_matrix':
+            opt_params = [
                 {'params': model.seg_model.parameters()},
                 {'params': model.crowd_layers.parameters(), 'lr': 1e-3}
-            ], lr=learning_rate)
-        elif config['model']['optimizer'] == 'adam':
-            optimizer = torch.optim.Adam([
-                dict(params=model.parameters(), lr=learning_rate),
-            ])
+            ]
+        else:
+            opt_params = [{'params': model.parameters()}]
+
+        if config['model']['optimizer'] == 'adam':
+            optimizer = torch.optim.Adam(opt_params, lr=learning_rate)
         elif config['model']['optimizer'] == 'sgd_mom':
-            optimizer = torch.optim.SGD([
-                dict(params=model.parameters(), lr=learning_rate, momentum=0.9, nesterov=True),
-            ])
+            optimizer = torch.optim.SGD(opt_params, lr=learning_rate, momentum=0.9, nesterov=True)
         else:
             raise Exception('Choose valid optimizer!')
 
@@ -120,11 +126,6 @@ class ModelHandler():
             model.train()
             set_epoch_output_dir(i)
             self.epoch = i
-            if i % int(config['model']['pionono_config']['phase_epochs']) == 0 and i > 0 and config['model']['method'] == 'pionono':
-                model.switch_phase()
-                optimizer = torch.optim.Adam([
-                    dict(params=model.parameters(), lr=config['model']['pionono_config']['phase_z_learning_rate']),
-                ])
 
             # Training in batches
             for j, (images, labels, imagename, ann_ids) in enumerate(trainloader):

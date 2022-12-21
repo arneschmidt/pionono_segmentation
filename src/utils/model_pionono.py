@@ -236,21 +236,3 @@ class PiononoModel(nn.Module):
         loss = -elbo + self.reg_loss
         return loss
 
-    def switch_phase(self):
-        # if previous phase is segmentation, switch to distribution and disable grads
-        if self.phase == 'segmentation':
-            self.phase = 'distribution'
-            grad_bool = False
-        # if previous phase is distribution, switch to segmentation and enable grads
-        else:
-            self.phase = 'segmentation'
-            grad_bool = True
-
-        named_params = self.named_parameters()
-        for n, p in named_params:
-            if 'unet' in n or 'head' in n:
-                p.requires_grad = grad_bool
-            #     print('IN: ' + n)
-            # else:
-            #     print('OUT: ' + n)
-

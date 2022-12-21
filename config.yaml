@@ -29,8 +29,7 @@ model:
     z_prior_sigma: 2.0
     z_posterior_mu_rand_sigma: 4.0 # sigma of random initializer for posterior mean
     gold_annotator: 6
-    phase_epochs: 1 # phases consist of training everything and training only z, -1 for disabling
-    phase_z_learning_rate: 0.001
+    z_learning_rate: 0.01
   conf_matrix_config:
     min_trace: False
     identity_reg: False
