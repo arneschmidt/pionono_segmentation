@@ -11,3 +11,8 @@ class SupervisedSegmentationModel(torch.nn.Module):
         x = self.seg_model(x)
         y = self.activation(x)
         return y
+
+    def train_step(self, images, labels, loss_fct, ann_ids):
+        y_pred = self.forward(images)
+        loss = loss_fct(y_pred, labels)
+        return loss, y_pred

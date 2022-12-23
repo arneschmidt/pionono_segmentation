@@ -236,3 +236,10 @@ class PiononoModel(nn.Module):
         loss = -elbo + self.reg_loss
         return loss
 
+    def train_step(self, images, labels, loss_fct, ann_ids):
+        self.forward(images)
+        loss = self.combined_loss(labels, loss_fct, ann_ids)
+        y_pred = self.preds
+
+        return loss, y_pred
+

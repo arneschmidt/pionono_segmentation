@@ -189,7 +189,6 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
             self.ignore_index = -100 # this means no index ignored
 
     def __getitem__(self, i):
-
         # read data
         image = cv2.imread(self.images_fps[i])
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -337,7 +336,7 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
 
 
 
-def get_data_supervised():
+def get_data():
     config = globals.config
     batch_size = config['model']['batch_size']
     normalization = config['data']['normalization']

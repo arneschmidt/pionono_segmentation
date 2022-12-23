@@ -1,7 +1,8 @@
 import numpy as np
 import torch
 from utils.segmentation_backbone import create_segmentation_backbone
-import utils.globals
+import utils.globals as globals
+from utils.loss import noisy_label_loss
 
 
 def double_conv(in_channels, out_channels, step, norm):
@@ -215,7 +216,7 @@ class image_CM(torch.nn.Module):
 
 
 class Crowd_segmentationModel(torch.nn.Module):
-    def __init__(self, noisy_labels):
+    def __init__(self, noisy_labels, alpha):
         super().__init__()
         config = utils.globals.config
         self.seg_model = create_segmentation_backbone()
@@ -224,6 +225,7 @@ class Crowd_segmentationModel(torch.nn.Module):
         print("Number of annotators (model): ", self.noisy_labels_no)
         self.class_no = config['data']['class_no']
         self.method = config['model']['method']
+        self.alpha = alpha
         if self.method == 'global':
             print("Global crowdsourcing")
             self.crowd_layers = global_CM(self.class_no, 512, 512, self.noisy_labels_no)
@@ -246,3 +248,20 @@ class Crowd_segmentationModel(torch.nn.Module):
         x = self.seg_model.segmentation_head(x)
         y = self.activation(x)
         return y, cm
+
+    def train_step(self, images, labels, loss_fct, ann_ids):
+        y_pred, cms = self.forward(images, ann_ids)
+        loss, loss_ce, loss_trace = noisy_label_loss(y_pred, cms, labels, globals.config['model']['min_trace'],
+                                                     self.alpha, self.loss_mode)
+        return loss, y_pred
+
+    def activate_min_trace(self):
+        print("Minimize trace activated!")
+        min_trace = True
+        self.alpha = globals.config['model']['alpha']
+        print("Alpha updated", self.alpha)
+        optimizer = torch.optim.Adam([
+            {'params': self.seg_model.parameters()},
+            {'params': self.crowd_layers.parameters(), 'lr': 1e-4}
+        ], lr=globals.config['model']['learning_rate'])
+        return optimizer

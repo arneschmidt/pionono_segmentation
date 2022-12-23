@@ -3,18 +3,14 @@ import torch
 import mlflow
 import warnings
 import numpy as np
-from utils.model_supervised import SupervisedSegmentationModel
-from Probabilistic_Unet_Pytorch.utils import l2_regularisation
-from utils.model_confusionmatrix import Crowd_segmentationModel
-from Probabilistic_Unet_Pytorch.probabilistic_unet import ProbabilisticUnet
-from utils.model_pionono import PiononoModel
-from segmentation_models_pytorch.losses import DiceLoss, FocalLoss
+
 import utils.globals as globals
 from utils.saving import save_model, save_results, save_test_images, save_image_color_legend, save_crowd_images, \
     save_grad_flow, save_test_image_variability, save_model_distributions
-from utils.loss import noisy_label_loss
 from utils.test_helpers import segmentation_scores
 from utils.mlflow_logger import log_results, probabilistic_model_logging, set_epoch_output_dir, set_test_output_dir
+from utils.initialize_optimization import init_optimization
+from utils.initialize_model import init_model
 
 eps=1e-7
 
@@ -27,39 +23,7 @@ class ModelHandler():
         self.train_pred_vis = []
         self.train_img_name = []
         self.epoch = 0
-        # architecture
-
-        if config['model']['method'] == 'prob-unet':
-            self.model = ProbabilisticUnet(input_channels=3, num_classes=config['data']['class_no'],
-                                           latent_dim=config['model']['prob_unet_config']['latent_dim'],
-                                           no_convs_fcomb=4, beta=config['model']['prob_unet_config']['kl_factor'],
-                                           reg_factor=config['model']['prob_unet_config']['reg_factor'],
-                                           original_backbone=config['model']['prob_unet_config']['original_backbone'])
-            # (256, 128, 64, 32, 16)
-            # self.model = ProbabilisticUnet(3, config['data']['class_no'])
-        elif config['model']['method'] == 'pionono':
-            self.model = PiononoModel(input_channels=3, num_classes=config['data']['class_no'], num_annotators=len(annotators),
-                                      predict_annotator=config['model']['pionono_config']['gold_annotator'],
-                                      latent_dim=config['model']['pionono_config']['latent_dim'],
-                                      z_prior_mu=config['model']['pionono_config']['z_prior_mu'],
-                                      z_prior_sigma=config['model']['pionono_config']['z_prior_sigma'],
-                                      z_posterior_init_sigma=config['model']['pionono_config']['z_posterior_mu_rand_sigma'],
-                                      no_head_layers=config['model']['pionono_config']['no_head_layers'],
-                                      kl_factor=config['model']['pionono_config']['kl_factor'],
-                                      reg_factor=config['model']['pionono_config']['reg_factor'],
-                                      mc_samples=config['model']['pionono_config']['mc_samples']
-                                      )
-        elif config['model']['method'] == 'confusion_matrix':
-            self.model = Crowd_segmentationModel(annotators)
-            self.alpha = 1
-            self.annotators = annotators
-        else:
-            self.model = SupervisedSegmentationModel()
-
-        # loss
-        self.loss_mode = config['model']['loss']
-
-        #GPU
+        self.model = init_model(annotators)
         self.model.cuda()
         if torch.cuda.is_available():
             print('Running on GPU')
@@ -73,51 +37,16 @@ class ModelHandler():
         model = self.model
         device = self.device
         max_score = 0
-        c_weights = config['data']['class_weights']
-        class_weights = torch.FloatTensor(c_weights).cuda()
 
         class_no = config['data']['class_no']
         epochs = config['model']['epochs']
-        learning_rate = config['model']['learning_rate']
         batch_s = config['model']['batch_size']
 
         save_image_color_legend()
 
         # Optimizer
 
-        if config['model']['method'] == 'pionono':
-            opt_params = [
-                {'params': model.unet.parameters()},
-                {'params': model.head.parameters()},
-                {'params': model.z.parameters(), 'lr': config['model']['pionono_config']['z_learning_rate']}
-            ]
-        elif config['model']['method'] == 'confusion_matrix':
-            opt_params = [
-                {'params': model.seg_model.parameters()},
-                {'params': model.crowd_layers.parameters(), 'lr': 1e-3}
-            ]
-        else:
-            opt_params = [{'params': model.parameters()}]
-
-        if config['model']['optimizer'] == 'adam':
-            optimizer = torch.optim.Adam(opt_params, lr=learning_rate)
-        elif config['model']['optimizer'] == 'sgd_mom':
-            optimizer = torch.optim.SGD(opt_params, lr=learning_rate, momentum=0.9, nesterov=True)
-        else:
-            raise Exception('Choose valid optimizer!')
-
-        if config['data']['ignore_last_class']:
-            ignore_index = int(config['data']['class_no'])  # deleted class is always set to the last index
-        else:
-            ignore_index = -100  # this means no index ignored
-        self.ignore_index = ignore_index
-        if config['model']['method'] != 'conf_matrix':
-            if self.loss_mode == 'ce':
-                loss_fct = torch.nn.CrossEntropyLoss(reduction='mean', ignore_index=ignore_index, weight=class_weights)
-            elif self.loss_mode == 'dice':
-                loss_fct = DiceLoss(ignore_index=ignore_index, from_logits=False, mode='multiclass')
-            elif self.loss_mode == 'focal':
-                loss_fct = FocalLoss(reduction='mean', ignore_index=ignore_index, mode='multiclass')
+        optimizer, loss_fct = init_optimization(model)
 
         loss_dict = {}
         # Training loop
@@ -139,41 +68,15 @@ class ModelHandler():
 
                 # Foward+loss (crowd or not)
                 _, labels = torch.max(labels, dim=1)
-
-                if config['model']['method'] == 'prob-unet':
-                    # labels = torch.unsqueeze(labels, 1)
-                    model.forward(images, labels, training=True)
-                    loss = model.combined_loss(labels, loss_fct)
-                    y_pred = model.reconstruction
-                elif config['model']['method'] == 'pionono':
-                    model.forward(images)
-                    loss = model.combined_loss(labels, loss_fct, ann_ids)
-                    y_pred = model.preds
-                elif config['model']['method'] == 'supervised':
-                    y_pred = model(images)
-                    loss = loss_fct(y_pred, labels)
-                elif config['model']['method'] == 'conf_matrix':
-                    if i == 5:  # 10 for cr_image_dice // 5 rest of the methods
-                        print("Minimize trace activated!")
-                        min_trace = True
-                        self.alpha = config['model']['alpha']
-                        print("Alpha updated", self.alpha)
-                        optimizer = torch.optim.Adam([
-                            {'params': model.seg_model.parameters()},
-                            {'params': model.crowd_layers.parameters(), 'lr': 1e-4}
-                        ], lr=learning_rate)
-                    y_pred, cms = model(images, ann_ids)
-                    loss, loss_ce, loss_trace = noisy_label_loss(y_pred, cms, labels, ignore_index,
-                                                                 config['model']['min_trace'], self.alpha,
-                                                                 self.loss_mode)
-                else:
-                    print('Choose valid model method!')
+                loss, y_pred = model.train_step(images, labels, loss_fct, ann_ids)
 
                 if config['model']['method'] != 'conf_matrix':
                     if j % int(config['logging']['interval']) == 0:
                         print("Iter {}/{} - batch loss : {:.4f}".format(j, len(trainloader), loss))
                         self.log_training_metrics(y_pred, labels, loss, model, i * len(trainloader) * batch_s + j)
                     self.store_train_imgs(imagename, images, labels, y_pred)
+                elif config['model']['method'] == 'conf_matrix' and i == 5:  # 10 for cr_image_dice // 5 rest of the methods
+                    optimizer = model.activate_min_trace()
 
                 # Backprop
                 if not torch.isnan(loss):
@@ -184,11 +87,6 @@ class ModelHandler():
             val_results = self.evaluate(validateloader, mode='val')  # TODO: validate crowd
             log_results(val_results, mode='val', step=int((i + 1) * len(trainloader) * batch_s))
             mlflow.log_metric('finished_epochs', self.epoch + 1, int((i + 1) * len(trainloader) * batch_s))
-            # Save model
-            metric_for_saving = val_results['macro_dice']
-            if max_score < metric_for_saving and i > 10:
-                save_model(model)
-                max_score = metric_for_saving
 
             if i % int(config['logging']['artifact_interval']) == 0:
                 save_model_distributions(model)
@@ -201,6 +99,7 @@ class ModelHandler():
             if i > config['model']['lr_decay_after_epoch']:
                 for g in optimizer.param_groups:
                     g['lr'] = g['lr'] / (1 + config['model']['lr_decay_param'])
+        save_model(model)
 
     def test(self, testloader):
         set_test_output_dir()

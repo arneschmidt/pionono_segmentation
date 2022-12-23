@@ -296,3 +296,9 @@ class ProbabilisticUnet(nn.Module):
             self.fcomb.layers)) * self.reg_factor
         loss = -elbo + self.reg_loss
         return loss
+
+    def train_step(self, images, labels, loss_fct, ann_ids=None):
+        self.forward(images, labels, training=True)
+        loss = self.combined_loss(labels, loss_fct)
+        y_pred = self.reconstruction
+        return loss, y_pred

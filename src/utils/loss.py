@@ -1,4 +1,5 @@
 import torch
+import utils.globals as globals
 import torch.nn as nn
 import torch.nn.functional as F
 torch.backends.cudnn.deterministic = True
@@ -8,7 +9,7 @@ from segmentation_models_pytorch.losses import DiceLoss, FocalLoss
 
 eps=1e-7
 
-def noisy_label_loss(pred, cms, labels, ignore_index, min_trace = False, alpha=0.1, loss_mode=None):
+def noisy_label_loss(pred, cms, labels, min_trace = False, alpha=0.1, loss_mode=None):
     """ This function defines the proposed trace regularised loss function, suitable for either binary
     or multi-class segmentation task. Essentially, each pixel has a confusion matrix.
     Args:
@@ -22,7 +23,10 @@ def noisy_label_loss(pred, cms, labels, ignore_index, min_trace = False, alpha=0
         regularisation (double): regularisation loss
     """
     b, c, h, w = pred.size()
-
+    if globals.config['data']['ignore_last_class']:
+        ignore_index = int(globals.config['data']['class_no'])  # deleted class is always set to the last index
+    else:
+        ignore_index = -100
     # normalise the segmentation output tensor along dimension 1
     pred_norm = pred
 

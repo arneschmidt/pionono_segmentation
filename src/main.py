@@ -12,7 +12,7 @@ import argparse
 
 import torch
 
-from data import get_data_supervised
+from data import get_data
 from utils.globals import init_global_config
 import utils.globals
 from model_handler import ModelHandler
@@ -28,7 +28,7 @@ def main():
     start_logging()
 
     # load data
-    trainloader, validateloader, testloader, annotators = get_data_supervised()
+    trainloader, validateloader, testloader, annotators = get_data()
 
     # load and train the model
     model_handler = ModelHandler(annotators)

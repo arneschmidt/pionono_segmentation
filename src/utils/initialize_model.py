@@ -1,0 +1,37 @@
+import torch
+import utils.globals as globals
+from utils.model_supervised import SupervisedSegmentationModel
+from utils.model_confusionmatrix import Crowd_segmentationModel
+from Probabilistic_Unet_Pytorch.probabilistic_unet import ProbabilisticUnet
+from utils.model_pionono import PiononoModel
+
+def init_model(annotators):
+    config = globals.config
+
+    if config['model']['method'] == 'prob-unet':
+        model = ProbabilisticUnet(input_channels=3, num_classes=config['data']['class_no'],
+                                       latent_dim=config['model']['prob_unet_config']['latent_dim'],
+                                       no_convs_fcomb=4, beta=config['model']['prob_unet_config']['kl_factor'],
+                                       reg_factor=config['model']['prob_unet_config']['reg_factor'],
+                                       original_backbone=config['model']['prob_unet_config']['original_backbone'])
+        # (256, 128, 64, 32, 16)
+        # model = ProbabilisticUnet(3, config['data']['class_no'])
+    elif config['model']['method'] == 'pionono':
+        model = PiononoModel(input_channels=3, num_classes=config['data']['class_no'],
+                                  num_annotators=len(annotators),
+                                  predict_annotator=config['model']['pionono_config']['gold_annotator'],
+                                  latent_dim=config['model']['pionono_config']['latent_dim'],
+                                  z_prior_mu=config['model']['pionono_config']['z_prior_mu'],
+                                  z_prior_sigma=config['model']['pionono_config']['z_prior_sigma'],
+                                  z_posterior_init_sigma=config['model']['pionono_config']['z_posterior_mu_rand_sigma'],
+                                  no_head_layers=config['model']['pionono_config']['no_head_layers'],
+                                  kl_factor=config['model']['pionono_config']['kl_factor'],
+                                  reg_factor=config['model']['pionono_config']['reg_factor'],
+                                  mc_samples=config['model']['pionono_config']['mc_samples']
+                                  )
+    elif config['model']['method'] == 'confusion_matrix':
+        model = Crowd_segmentationModel(annotators, alpha)
+    else:
+        model = SupervisedSegmentationModel()
+
+    return model
