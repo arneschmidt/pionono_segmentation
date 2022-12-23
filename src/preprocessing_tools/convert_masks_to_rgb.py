@@ -18,9 +18,7 @@ parser.add_argument("--output_dir", "-o", type=str,
 args = parser.parse_args()
 
 map_dir = 'Maps/'
-# map_annotator_dirs = ['Maps1_T/', 'Maps2_T/', 'Maps3_T/', 'Maps4_T/', 'Maps5_T/', 'Maps6_T/', 'STAPLE/', 'MV/']
-map_annotator_dirs = ['STAPLE/', 'MV/']
-
+map_annotator_dirs = ['Maps1_T/', 'Maps2_T/', 'Maps3_T/', 'Maps4_T/', 'Maps5_T/', 'Maps6_T/', 'STAPLE/', 'MV/']
 
 os.makedirs(args.output_dir, exist_ok=True)
 for m in range(len(map_annotator_dirs)):

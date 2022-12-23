@@ -245,9 +245,6 @@ class ModelHandler():
         labels = []
         preds = []
 
-        inter_observer_variations = []
-        intra_observer_variations = []
-
         with torch.no_grad():
             for j, (test_img, test_label, test_name, ann_id) in enumerate(evaluatedata):
                 test_img = test_img.to(device=device, dtype=torch.float32)

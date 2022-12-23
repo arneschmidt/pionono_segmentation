@@ -1,6 +1,6 @@
 model:
   seed: 0
-  batch_size: 4
+  batch_size: 2
   optimizer: adam # sgd_mom, adam
   epochs: 80
   loss: dice # ce, dice, focal
@@ -20,7 +20,7 @@ model:
     reg_factor: 0.00001
     latent_dim: 6
   pionono_config:
-    mc_samples: 5
+    mc_samples: 3
     no_head_layers: 4
     kl_factor: 0.01
     reg_factor: 0.00001

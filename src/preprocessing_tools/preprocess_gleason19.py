@@ -8,12 +8,15 @@ from scipy import stats
 
 import SimpleITK as sitk
 
+CLASS_COLORS_BGR = [[128, 255, 96], [32, 224, 255], [0, 104, 255], [0, 0, 255], [255, 255, 255]]
+
+
 parser = argparse.ArgumentParser(description="Resize Images of prostate TMA")
 parser.add_argument("--input_dir", "-i", type=str,
                     default="/data/BasesDeDatos/Gleason_2019/original_dataset/",
                     help="Input directory of dataset.")
 parser.add_argument("--output_dir", "-o", type=str,
-                    default="/data/BasesDeDatos/Gleason_2019/resized_dataset_1024_b/",
+                    default="/data/BasesDeDatos/Gleason_2019/resized_dataset_1024b/",
                     help="Output directory of resized images.")
 args = parser.parse_args()
 
@@ -51,7 +54,7 @@ def resize_images_in_folder(in_dir, out_dir, resize_type='nearest', mask=False):
         print('Image: ' + img_file + ' Shape: ' + str(image.shape))
         resolution_list.append(image.shape)
         image = cv2.resize(image, (resize_res, resize_res), interpolation=interpolation)
-
+        valid = True
         if mask:
             # The initial classes are 0 (background), 1 (normal tissue), 3 (GG3), 4 (GG4), 5 (GG5), 6 (normal tissue)
             # We move these classes to: 0 (normal tissue), 1 (GG3), 2 (GG4), 3 (GG5), 4 (background)
@@ -63,8 +66,10 @@ def resize_images_in_folder(in_dir, out_dir, resize_type='nearest', mask=False):
             image = np.where(image==254, ones*4, image) # background  to 4
             assert np.all(image >= 0)
             assert np.all(image <= 4)
-
-        cv2.imwrite(img_path_out, image)
+            if np.all(image == 4):
+                valid = False
+        if valid:
+            cv2.imwrite(img_path_out, image)
     # print('Image shapes: ' + np.unique(resolution_list))
 
 def resize_all_images():
@@ -111,11 +116,15 @@ def create_crossvalidation_splits():
 
     val_n = len(img_file_list)/num_splits
 
-    list_gg5 = ['slide001_core145.png', 'slide007_core005.png', 'slide006_core010.png', 'slide007_core044.png',
-                'slide007_core043.png', 'slide007_core016.png', 'slide002_core073.png', 'slide002_core144.png',
-                'slide001_core010.png', 'slide002_core009.png', 'slide007_core006.png', 'slide005_core092.png',
-                'slide002_core074.png', 'slide002_core140.png', 'slide002_core143.png', 'slide002_core010.png',
-                'slide003_core096.png', 'slide003_core068.png', 'slide005_core073.png']
+    # list_gg5 = ['slide001_core145.png', 'slide007_core005.png', 'slide006_core010.png', 'slide007_core044.png',
+    #             'slide007_core043.png', 'slide007_core016.png', 'slide002_core073.png', 'slide002_core144.png',
+    #             'slide001_core010.png', 'slide002_core009.png', 'slide007_core006.png', 'slide005_core092.png',
+    #             'slide002_core074.png', 'slide002_core140.png', 'slide002_core143.png', 'slide002_core010.png',
+    #             'slide003_core096.png', 'slide003_core068.png', 'slide005_core073.png']
+    list_gg5 = ['slide001_core145.png', 'slide007_core005.png', 'slide007_core044.png', 'slide003_core068.png',
+                'slide007_core016.png', 'slide002_core073.png', 'slide002_core144.png', 'slide001_core010.png',
+                'slide002_core009.png', 'slide005_core092.png', 'slide002_core074.png', 'slide002_core140.png',
+                'slide002_core143.png', 'slide002_core010.png', 'slide003_core096.png', 'slide007_core043.png']
 
     # Egually distrbute GG5 images in the image list.
     # We assure that more or less the equal amount of GG5 images is in each crowssvalidation split
@@ -185,9 +194,9 @@ def create_voting_masks(voting_mechanism ='majority', dir_name='MV/'):
                 masks_sitk_format = [sitk.GetImageFromArray(mask.astype(np.uint8)) for mask in masks]
                 vote_masks_sitk_format = sitk.MultiLabelSTAPLE(masks_sitk_format)
                 vote_masks = sitk.GetArrayFromImage(vote_masks_sitk_format)
-                if np.any(vote_masks < 0) or np.any(vote_masks > 4) or np.any(vote_masks % 1.0 != 0):
-                    print(np.max(vote_masks))
-                    print(np.min(vote_masks))
+                if np.any(vote_masks < 0) or np.any(vote_masks > 4) or np.any(np.mod(vote_masks,1) != 0):
+                    # fall back to majority voting to avoid unannotated regions
+                    vote_masks = stats.mode(masks, axis=0)[0][0]
             else:
                 print('Choose valid voting mechanism')
 
@@ -197,17 +206,51 @@ def create_voting_masks(voting_mechanism ='majority', dir_name='MV/'):
     print('Total images with voting: ' + str(counter))
     calculate_dataset_statistics(args.output_dir + map_dir + dir_name, voting_mechanism)
 
+def convert_to_rgb(map_annotator_dirs):
+    print('### Convert Maps to RGB images ###')
+    rgb_dir = 'rgb_images/'
+    rgb_path = args.output_dir + rgb_dir
+    os.makedirs(rgb_path, exist_ok=True)
+    map_dir = 'Maps/'
+
+    os.makedirs(rgb_path, exist_ok=True)
+    for m in range(len(map_annotator_dirs)):
+        map_annotator_dir = map_annotator_dirs[m]
+        in_dir = args.output_dir + map_dir + map_annotator_dir
+        out_dir = rgb_path + map_annotator_dir
+        os.makedirs(out_dir, exist_ok=True)
+        img_file_list = os.listdir(in_dir)
+        print(map_annotator_dir)
+        print('Images found:' + str(len(img_file_list)))
+        for img_file in img_file_list:
+            img_path_in = in_dir + img_file
+            img_path_out = out_dir + img_file
+
+            image = cv2.imread(img_path_in)
+            print('Image: ' + img_file + ' Shape: ' + str(image.shape))
+
+            # classes : 0 (normal tissue), 1 (GG3), 2 (GG4), 3 (GG5), 4 (background)
+            ones = np.ones_like(image)
+
+            for c in range(len(CLASS_COLORS_BGR)):
+                image = np.where(image == c, ones * CLASS_COLORS_BGR[c], image)
+
+            assert np.all(image >= 0)
+            assert np.all(image <= 255)
+
+            cv2.imwrite(img_path_out, image)
 
 resize_all_images()
 
-# create_voting_masks('majority', dir_name='MV/')
+create_voting_masks('majority', dir_name='MV/')
 
 create_voting_masks('staple', dir_name='STAPLE/')
 
-# create_crossvalidation_splits()
+create_crossvalidation_splits()
 
-# calculate_dataset_statistics(args.output_dir + map_dir + 'MV/', 'total')
+calculate_dataset_statistics(args.output_dir + map_dir + 'STAPLE/', 'total')
 
+convert_to_rgb(['Maps1_T/', 'Maps2_T/', 'Maps3_T/', 'Maps4_T/', 'Maps5_T/', 'Maps6_T/', 'STAPLE/', 'MV/'])
 
 
 

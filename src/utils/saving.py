@@ -109,7 +109,7 @@ def plot_and_save_distributions(mu_list, cov_list, dir_path):
     # Initializing the random seed
     random_seed = 0
 
-    lim = np.max(np.abs(twodim_mu_list)) * 2 + np.max(np.abs(twodim_mu_list))
+    lim = np.max(np.abs(twodim_mu_list)) * 1.5 + np.max(np.abs(twodim_cov_list))
     x = np.linspace(- lim, lim, num=100)
     y = np.linspace(- lim, lim, num=100)
     X, Y = np.meshgrid(x, y)
@@ -128,10 +128,15 @@ def plot_and_save_distributions(mu_list, cov_list, dir_path):
         pdf_list.append(pdf)
 
    # Plotting contour plots
+    annotators = globals.config['data']['train']['masks']
     colors = list(mcolors.TABLEAU_COLORS.keys())
+    legend_list =[]
     for idx, val in enumerate(pdf_list):
         contourline = np.max(val) * (3/4)
-        plt.contour(X, Y, val, levels=[contourline], colors=colors[idx], alpha=0.7)
+        cntr = plt.contour(X, Y, val, levels=[contourline], colors=colors[idx], alpha=0.7)
+        h, _ = cntr.legend_elements()
+        legend_list.append(h[0])
+    plt.legend(legend_list, annotators)
     plt.tight_layout()
     plt.savefig(os.path.join(dir_path, "dist_plot.jpg" ))
     plt.close()
