@@ -239,18 +239,20 @@ def convert_to_rgb(map_annotator_dirs):
             assert np.all(image <= 255)
 
             cv2.imwrite(img_path_out, image)
-
-resize_all_images()
-
-create_voting_masks('majority', dir_name='MV/')
-
-create_voting_masks('staple', dir_name='STAPLE/')
-
-create_crossvalidation_splits()
+#
+# resize_all_images()
+#
+# create_voting_masks('majority', dir_name='MV/')
+#
+# create_voting_masks('staple', dir_name='STAPLE/')
+#
+# create_crossvalidation_splits()
+#
+# convert_to_rgb(['Maps1_T/', 'Maps2_T/', 'Maps3_T/', 'Maps4_T/', 'Maps5_T/', 'Maps6_T/', 'STAPLE/', 'MV/'])
 
 calculate_dataset_statistics(args.output_dir + map_dir + 'STAPLE/', 'total')
 
-convert_to_rgb(['Maps1_T/', 'Maps2_T/', 'Maps3_T/', 'Maps4_T/', 'Maps5_T/', 'Maps6_T/', 'STAPLE/', 'MV/'])
+
 
 
 

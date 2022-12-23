@@ -10,13 +10,16 @@ data:
   path: /home/arne/data/Gleason_2019/resized_dataset_1024/
   train:
     images: Crossval3/train
-    masks: Maps/STAPLE
+    masks:
+      - Maps/STAPLE
   val:
     images: Crossval3/val
-    masks: Maps/STAPLE
+    masks:
+      - Maps/STAPLE
   test:
     images: Crossval3/val
-    masks: Maps/STAPLE
+    masks:
+      - Maps/STAPLE
   visualize_images:
     train:
       - 'slide001_core005.png'

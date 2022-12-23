@@ -8,7 +8,7 @@ import utils.globals as globals
 from utils.saving import save_model, save_results, save_test_images, save_image_color_legend, save_crowd_images, \
     save_grad_flow, save_test_image_variability, save_model_distributions
 from utils.test_helpers import segmentation_scores
-from utils.mlflow_logger import log_results, probabilistic_model_logging, set_epoch_output_dir, set_test_output_dir
+from utils.mlflow_logger import log_results, log_results_list, probabilistic_model_logging, set_epoch_output_dir, set_test_output_dir
 from utils.initialize_optimization import init_optimization
 from utils.initialize_model import init_model
 
@@ -32,13 +32,9 @@ class ModelHandler():
             warnings.warn("Running on CPU because no GPU was found!")
             self.device = torch.device('cpu')
 
-    def train(self, trainloader, validateloader):
+    def train(self, trainloader, validateloaders):
         config = globals.config
         model = self.model
-        device = self.device
-        max_score = 0
-
-        class_no = config['data']['class_no']
         epochs = config['model']['epochs']
         batch_s = config['model']['batch_size']
 
@@ -84,11 +80,12 @@ class ModelHandler():
                     optimizer.step()
 
             # Save validation results
-            val_results = self.evaluate(validateloader, mode='val')  # TODO: validate crowd
-            log_results(val_results, mode='val', step=int((i + 1) * len(trainloader) * batch_s))
+
             mlflow.log_metric('finished_epochs', self.epoch + 1, int((i + 1) * len(trainloader) * batch_s))
 
             if i % int(config['logging']['artifact_interval']) == 0:
+                val_results = self.evaluate(validateloaders, mode='val')  # TODO: validate crowd
+                log_results_list(val_results, mode='val', step=int((i + 1) * len(trainloader) * batch_s))
                 save_model_distributions(model)
                 save_grad_flow(model.named_parameters())
                 self.save_train_imgs()
@@ -101,15 +98,15 @@ class ModelHandler():
                     g['lr'] = g['lr'] / (1 + config['model']['lr_decay_param'])
         save_model(model)
 
-    def test(self, testloader):
+    def test(self, testloaders):
         set_test_output_dir()
         save_image_color_legend()
-        results = self.evaluate(testloader)
-        log_results(results, mode='test', step=None)
+        results = self.evaluate(testloaders)
+        log_results_list(results, mode='test', step=None)
         save_results(results)
         mlflow.log_artifacts(globals.config['logging']['experiment_folder'])
 
-    def evaluate(self, evaluatedata, mode='test'):
+    def evaluate(self, evaluatedata_list, mode='test'):
         config = globals.config
         class_no = config['data']['class_no']
         vis_images = config['data']['visualize_images'][mode]
@@ -126,44 +123,49 @@ class ModelHandler():
         device = self.device
         model.eval()
 
-        labels = []
-        preds = []
-
         with torch.no_grad():
-            for j, (test_img, test_label, test_name, ann_id) in enumerate(evaluatedata):
-                test_img = test_img.to(device=device, dtype=torch.float32)
-                if config['model']['method'] == 'prob-unet':
-                    model.forward(test_img, None, training=False)
-                    test_pred = model.sample(testing=True)
-                elif config['model']['method'] == 'pionono':
-                    model.forward(test_img)
-                    test_pred = model.sample(use_z_mean=True)
+            results_list = []
+            for e in range(len(evaluatedata_list)):
+                labels = []
+                preds = []
+                for j, (test_img, test_label, test_name, ann_id) in enumerate(evaluatedata_list[e]):
+                    test_img = test_img.to(device=device, dtype=torch.float32)
+                    if config['model']['method'] == 'prob-unet':
+                        model.forward(test_img, None, training=False)
+                        test_pred = model.sample(testing=True)
+                    elif config['model']['method'] == 'pionono':
+                        model.forward(test_img)
+                        test_pred = model.sample(use_z_mean=True)
+                    else:
+                        test_pred = model(test_img)
+                    _, test_pred = torch.max(test_pred[:, 0:class_no], dim=1)
+                    test_pred_np = test_pred.cpu().detach().numpy()
+                    test_label = test_label.cpu().detach().numpy()
+                    test_label = np.argmax(test_label, axis=1)
+
+                    preds.append(test_pred_np.astype(np.int8).copy().flatten())
+                    labels.append(test_label.astype(np.int8).copy().flatten())
+                    if self.epoch % int(config['logging']['artifact_interval']) == 0 or mode == 'test':
+                        for k in range(len(test_name)):
+                            if test_name[k] in vis_images or vis_images == 'all':
+                                img = test_img[k]
+                                save_test_images(img, test_pred_np[k], test_label[k], test_name[k], mode)
+                                save_test_image_variability(model, test_name, k, mode)
+
+                preds = np.concatenate(preds, axis=0, dtype=np.int8).flatten()
+                labels = np.concatenate(labels, axis=0, dtype=np.int8).flatten()
+                if e == 0:
+                    shortened = False
                 else:
-                    test_pred = model(test_img)
-                _, test_pred = torch.max(test_pred[:, 0:class_no], dim=1)
-                test_pred_np = test_pred.cpu().detach().numpy()
-                test_label = test_label.cpu().detach().numpy()
-                test_label = np.argmax(test_label, axis=1)
+                    shortened = True
+                results = self.get_results(preds, labels, shortened)
 
-                preds.append(test_pred_np.astype(np.int8).copy().flatten())
-                labels.append(test_label.astype(np.int8).copy().flatten())
-                if self.epoch % int(config['logging']['artifact_interval']) == 0 or mode == 'test':
-                    for k in range(len(test_name)):
-                        if test_name[k] in vis_images or vis_images == 'all':
-                            img = test_img[k]
-                            save_test_images(img, test_pred_np[k], test_label[k], test_name[k], mode)
-                            save_test_image_variability(model, test_name, k, mode)
+                print('RESULTS for ' + mode + ' Annotator: ' + str(e))
+                print(results)
+                results_list.append(results)
+        return results_list
 
-            preds = np.concatenate(preds, axis=0, dtype=np.int8).flatten()
-            labels = np.concatenate(labels, axis=0, dtype=np.int8).flatten()
-
-            results = self.get_results(preds, labels)
-
-            print('RESULTS for ' + mode)
-            print(results)
-            return results
-
-    def get_results(self, pred, label):
+    def get_results(self, pred, label, shortened=False):
         config = globals.config
         class_no = config['data']['class_no']
         class_names = globals.config['data']['class_names']
@@ -171,17 +173,12 @@ class ModelHandler():
         if globals.config['data']['ignore_last_class_only_for_testing']:
             class_no = class_no-1
 
-        metrics_names = ['macro_dice', 'micro_dice', 'miou', 'accuracy', 'macro_f1', 'cohens_kappa']
-        for class_id in range(class_no):
-            metrics_names.append('dice_class_' + str(class_id) + '_' + class_names[class_id])
-            metrics_names.append('f1_class_' + str(class_id) + '_' + class_names[class_id])
-
         if torch.is_tensor(pred):
             pred = pred.cpu().detach().numpy().copy().flatten()
         if torch.is_tensor(label):
             label = label.cpu().detach().numpy().copy().flatten()
 
-        results = segmentation_scores(label, pred, metrics_names)
+        results = segmentation_scores(label, pred, shortened)
 
         return results
 

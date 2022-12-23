@@ -1,10 +1,10 @@
 model:
   seed: 0
-  batch_size: 2
+  batch_size: 4
   optimizer: adam # sgd_mom, adam
   epochs: 80
   loss: dice # ce, dice, focal
-  learning_rate: 0.001
+  learning_rate: 0.0001
   lr_decay_after_epoch: 40
   lr_decay_param: 0.1
   backbone: unet # unet, linknet
@@ -20,15 +20,15 @@ model:
     reg_factor: 0.00001
     latent_dim: 6
   pionono_config:
-    mc_samples: 3
+    mc_samples: 5
     no_head_layers: 4
-    kl_factor: 0.01
+    kl_factor: 0.001
     reg_factor: 0.00001
     latent_dim: 6
     z_prior_mu: 0.0
     z_prior_sigma: 2.0
     z_posterior_mu_rand_sigma: 4.0 # sigma of random initializer for posterior mean
-    gold_annotator: 6
+    gold_annotator: 0
     z_learning_rate: 0.01
   conf_matrix_config:
     min_trace: False

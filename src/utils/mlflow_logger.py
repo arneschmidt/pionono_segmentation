@@ -35,6 +35,14 @@ def log_results(results, mode, step=None):
 
     mlflow.log_metrics(formatted_results, step=step)
 
+def log_results_list(results_list, mode, step=None):
+    formatted_results = {}
+    for a in range(len(results_list)):
+        new_prefix = 'a' + str(a)
+        for key in results_list[a].keys():
+            new_key = new_prefix + '_' + key
+            formatted_results[new_key] = results_list[a][key]
+    log_results(formatted_results, mode, step)
 
 def set_epoch_output_dir(epoch: int):
     if epoch % int(globals.config['logging']['artifact_interval']) == 0:
