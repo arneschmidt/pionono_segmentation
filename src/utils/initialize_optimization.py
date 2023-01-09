@@ -1,6 +1,7 @@
 import torch
 import utils.globals as globals
-from segmentation_models_pytorch.losses import DiceLoss, FocalLoss
+from segmentation_models_pytorch.losses import FocalLoss
+from utils.dice_losses import DiceLoss, GeneralizedDiceLoss
 
 def init_optimization(model):
     config = globals.config
@@ -39,7 +40,9 @@ def init_optimization(model):
         if loss_mode == 'ce':
             loss_fct = torch.nn.CrossEntropyLoss(reduction='mean', ignore_index=ignore_index, weight=class_weights)
         elif loss_mode == 'dice':
-            loss_fct = DiceLoss(ignore_index=ignore_index, from_logits=False, mode='multiclass')
+            loss_fct = DiceLoss(weight=class_weights, normalization='none')
+        elif loss_mode == 'gdice':
+            loss_fct = GeneralizedDiceLoss(normalization='none')
         elif loss_mode == 'focal':
             loss_fct = FocalLoss(reduction='mean', ignore_index=ignore_index, mode='multiclass')
         else:

@@ -16,7 +16,7 @@ parser.add_argument("--input_dir", "-i", type=str,
                     default="/data/BasesDeDatos/Gleason_2019/original_dataset/",
                     help="Input directory of dataset.")
 parser.add_argument("--output_dir", "-o", type=str,
-                    default="/data/BasesDeDatos/Gleason_2019/resized_dataset_1024b/",
+                    default="/data/BasesDeDatos/Gleason_2019/resized_dataset_1024/",
                     help="Output directory of resized images.")
 args = parser.parse_args()
 
@@ -127,7 +127,7 @@ def create_crossvalidation_splits():
                 'slide002_core143.png', 'slide002_core010.png', 'slide003_core096.png', 'slide007_core043.png']
 
     # Egually distrbute GG5 images in the image list.
-    # We assure that more or less the equal amount of GG5 images is in each crowssvalidation split
+    # We assure that more or less the equal amount of GG5 images is in each crossvalidation split
     frequency_gg5 = len(img_file_list)/len(list_gg5)
 
     for img in list_gg5:

@@ -4,7 +4,7 @@ data:
   sr_experiment: False
   class_no: 5
   class_names: ['NC', 'GG3', 'GG4', 'GG5', 'other']
-  class_weights: [1., 1., 1., 1., 1.] #[ 2.75319941,  1.12653214,  0.82120476, 32.35487692,  0.39992387]
+  class_weights: [1., 1., 1., 1., 1.]
   ignore_last_class: False # set True if last class will be ignored during training and testing
   ignore_last_class_only_for_testing: True # set True if last class will be ignored during  testing
   path: /home/arne/data/Gleason_2019/resized_dataset_1024/
