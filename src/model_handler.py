@@ -84,7 +84,7 @@ class ModelHandler():
             mlflow.log_metric('finished_epochs', self.epoch + 1, int((i + 1) * len(trainloader) * batch_s))
 
             if i % int(config['logging']['artifact_interval']) == 0:
-                val_results = self.evaluate(validateloaders, mode='val')  # TODO: validate crowd
+                val_results = self.evaluate(validateloaders, mode='val')
                 log_results_list(val_results, mode='val', step=int((i + 1) * len(trainloader) * batch_s))
                 save_model_distributions(model)
                 save_grad_flow(model.named_parameters())
@@ -130,12 +130,14 @@ class ModelHandler():
                 preds = []
                 for j, (test_img, test_label, test_name, ann_id) in enumerate(evaluatedata_list[e]):
                     test_img = test_img.to(device=device, dtype=torch.float32)
-                    if config['model']['method'] == 'prob-unet':
-                        model.forward(test_img, None, training=False)
-                        test_pred = model.sample(testing=True)
-                    elif config['model']['method'] == 'pionono':
+                    if config['model']['method'] == 'pionono':
                         model.forward(test_img)
                         test_pred = model.sample(use_z_mean=True)
+                    elif config['model']['method'] == 'prob_unet':
+                        model.forward(test_img, None, training=False)
+                        test_pred = model.sample(testing=True)
+                    elif config['model']['method'] == 'conf_matrix':
+                        test_pred = model(test_img)[0]
                     else:
                         test_pred = model(test_img)
                     _, test_pred = torch.max(test_pred[:, 0:class_no], dim=1)

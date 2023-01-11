@@ -59,7 +59,7 @@ def set_test_output_dir():
 def probabilistic_model_logging(model, step):
     method = globals.config['model']['method']
     loss_dict = {}
-    if method == 'prob-unet':
+    if method == 'prob_unet':
         loss_dict['loss_reconstruction'] = float(model.reconstruction_loss.cpu().detach().numpy())
         loss_dict['loss_kl'] = float((model.kl * model.beta).cpu().detach().numpy())
         loss_dict['loss_regularization'] = float(model.reg_loss.cpu().detach().numpy())

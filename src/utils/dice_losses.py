@@ -161,7 +161,7 @@ class GeneralizedDiceLoss(_AbstractDiceLoss):
         denominator = (input + target).sum(-1)
         denominator = (denominator * w_l).clamp(min=self.epsilon)
 
-        return 2 * (intersect.sum() / denominator.sum())
+        return 2 * (intersect / denominator)
 
 def flatten(tensor):
     """Flattens a given tensor such that the channel axis is first.

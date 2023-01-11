@@ -1,9 +1,11 @@
 import numpy as np
 import torch
+import torch.nn.functional as F
 from utils.segmentation_backbone import create_segmentation_backbone
 import utils.globals as globals
 from utils.loss import noisy_label_loss
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def double_conv(in_channels, out_channels, step, norm):
     # ===========================================
@@ -144,7 +146,7 @@ class global_CM(torch.nn.Module):
         #output = self.dense_output(feat_class)
         #output = self.act(output.view(-1, self.class_no, self.class_no))
         output = self.act(self.dense_output(A_id))
-        all_weights = output.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 1, 512, 512)
+        all_weights = output.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 1, self.input_height, self.input_width)
         #print(all_weights.shape)
         #y = all_weights / all_weights.sum(1, keepdim=True)
         # print(y.sum(1))
@@ -168,8 +170,9 @@ class conv_layers_image(torch.nn.Module):
         self.conv_bn2 = torch.nn.BatchNorm2d(4)
         self.fc_bn = torch.nn.BatchNorm1d(128)
         self.flatten = torch.nn.Flatten()
-        self.fc1 = torch.nn.Linear(in_features=4096, out_features=128)
+        self.fc1 = torch.nn.Linear(in_features=16384, out_features=128)
         self.fc2 = torch.nn.Linear(in_features=128, out_features=64)
+
 
     def forward(self, x):
         x = self.pool(self.relu(self.conv_bn(self.conv(x))))
@@ -215,28 +218,29 @@ class image_CM(torch.nn.Module):
         return y
 
 
-class Crowd_segmentationModel(torch.nn.Module):
-    def __init__(self, noisy_labels, alpha):
+class ConfusionMatrixModel(torch.nn.Module):
+    def __init__(self, num_classes, annotators, level, image_res, learning_rate, alpha, min_trace):
         super().__init__()
-        config = utils.globals.config
-        self.seg_model = create_segmentation_backbone()
-        self.activation = torch.nn.Softmax(dim=1)
-        self.noisy_labels_no = len(noisy_labels)
-        print("Number of annotators (model): ", self.noisy_labels_no)
-        self.class_no = config['data']['class_no']
-        self.method = config['model']['method']
+        config = globals.config
+        self.seg_model = create_segmentation_backbone().to(device)
+        self.num_annotators = len(annotators)
+        self.num_classes = num_classes
+        self.level = level
+        self.image_res = image_res
+        self.learning_rate = learning_rate
         self.alpha = alpha
-        if self.method == 'global':
+        self.min_trace = min_trace
+        if self.level == 'global':
             print("Global crowdsourcing")
-            self.crowd_layers = global_CM(self.class_no, 512, 512, self.noisy_labels_no)
-
-        elif self.method == 'image':  # TODO: put this cases as in mode and not true/false
+            self.crowd_layers = global_CM(self.num_classes, self.image_res, self.image_res, self.num_annotators)
+        elif self.level == 'image':
             print("Image dependent crowdsourcing")
-            self.crowd_layers = image_CM(self.class_no, 512, 512, self.noisy_labels_no)
-        elif self.method == 'pixel':
+            self.crowd_layers = image_CM(self.num_classes, self.image_res, self.image_res, self.num_annotators)
+        elif self.level == 'pixel':
             print("Pixel dependent crowdsourcing")
             self.crowd_layers = cm_layers(in_channels=16, norm='in',
-                                                  class_no=config['data']['class_no'], noisy_labels_no=self.noisy_labels_no)  # TODO: arrange in_channels
+                                          class_no=self.num_classes, noisy_labels_no=self.num_annotators)  # TODO: arrange in_channels
+        self.crowd_layers.to(device)
         self.activation = torch.nn.Softmax(dim=1)
 
     def forward(self, x, A_id=None):
@@ -244,24 +248,28 @@ class Crowd_segmentationModel(torch.nn.Module):
         x = self.seg_model.encoder(x)
         x = self.seg_model.decoder(*x)
         if A_id is not None:
-            cm = self.crowd_layers(A_id, x)
+            # A_onehot = torch.zeros(int(A_id.shape[0]), self.num_annotators).to(device)
+            # A_onehot[A_id.int()] = 1
+            # A_onehot.requires_grad = False
+            A_onehot = F.one_hot(A_id.long(), self.num_annotators)
+            cm = self.crowd_layers(A_onehot.float(), x)
         x = self.seg_model.segmentation_head(x)
         y = self.activation(x)
         return y, cm
 
     def train_step(self, images, labels, loss_fct, ann_ids):
         y_pred, cms = self.forward(images, ann_ids)
-        loss, loss_ce, loss_trace = noisy_label_loss(y_pred, cms, labels, globals.config['model']['min_trace'],
-                                                     self.alpha, self.loss_mode)
+        loss, loss_ce, loss_trace = noisy_label_loss(y_pred, cms, labels, loss_fct,
+                                                     self.min_trace,
+                                                     self.alpha)
         return loss, y_pred
 
     def activate_min_trace(self):
         print("Minimize trace activated!")
         min_trace = True
-        self.alpha = globals.config['model']['alpha']
         print("Alpha updated", self.alpha)
         optimizer = torch.optim.Adam([
             {'params': self.seg_model.parameters()},
             {'params': self.crowd_layers.parameters(), 'lr': 1e-4}
-        ], lr=globals.config['model']['learning_rate'])
+        ], lr=self.learning_rate)
         return optimizer

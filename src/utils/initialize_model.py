@@ -1,14 +1,14 @@
 import torch
 import utils.globals as globals
 from utils.model_supervised import SupervisedSegmentationModel
-from utils.model_confusionmatrix import Crowd_segmentationModel
+from utils.model_confusionmatrix import ConfusionMatrixModel
 from Probabilistic_Unet_Pytorch.probabilistic_unet import ProbabilisticUnet
 from utils.model_pionono import PiononoModel
 
 def init_model(annotators):
     config = globals.config
 
-    if config['model']['method'] == 'prob-unet':
+    if config['model']['method'] == 'prob_unet':
         model = ProbabilisticUnet(input_channels=3, num_classes=config['data']['class_no'],
                                        latent_dim=config['model']['prob_unet_config']['latent_dim'],
                                        no_convs_fcomb=4, beta=config['model']['prob_unet_config']['kl_factor'],
@@ -29,8 +29,13 @@ def init_model(annotators):
                                   reg_factor=config['model']['pionono_config']['reg_factor'],
                                   mc_samples=config['model']['pionono_config']['mc_samples']
                                   )
-    elif config['model']['method'] == 'confusion_matrix':
-        model = Crowd_segmentationModel(annotators, alpha)
+    elif config['model']['method'] == 'conf_matrix':
+        model = ConfusionMatrixModel(num_classes=config['data']['class_no'], annotators=annotators,
+                                     level=config['model']['conf_matrix_config']['level'],
+                                     image_res=config['data']['image_resolution'],
+                                     learning_rate=config['model']['learning_rate'],
+                                     alpha=config['model']['conf_matrix_config']['alpha'],
+                                     min_trace=config['model']['conf_matrix_config']['min_trace'])
     else:
         model = SupervisedSegmentationModel()
 

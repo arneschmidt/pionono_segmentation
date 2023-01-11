@@ -35,25 +35,8 @@ def get_training_augmentation():
     return composed_transform
 
 
-def get_validation_augmentation():
-    """Add paddings to make image shape divisible by 32"""
-    test_transform = [
-        albu.PadIfNeeded(384, 480)
-    ]
-    return albu.Compose(test_transform)
-
-
 def to_tensor(x, **kwargs):
     return x.transpose(2, 0, 1).astype('float32')
-
-# def my_preprocess_input(x):
-#
-#     x = x / 255.0
-#
-#     return x
-#
-# def get_my_prec():
-#     return functools.partial(my_preprocess_input)
 
 def get_preprocessing(preprocessing_fn):
     """Construct preprocessing transform
