@@ -138,11 +138,9 @@ class Crowdsourced_Dataset(torch.utils.data.Dataset):
             preprocessing=None,
             _set = None
     ):
-        if globals.config['data']['sr_experiment']:
-            names = pd.read_csv(images_dir + globals.config['data']['sr_path'] + 'train.csv').values.tolist()
-            self.ids = [x[0] for x in names]
-        else:
-            self.ids = os.listdir(images_dir)
+
+        self.ids = os.listdir(images_dir)
+
         self.images_fps = [os.path.join(images_dir, image_id) for image_id in self.ids]
         # if mask_dir is a string, infer annotators from directory
         if not isinstance(masks_dir, list):
