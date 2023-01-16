@@ -46,7 +46,7 @@ def segmentation_scores(label_trues, label_preds, shortened):
         results['macro_f1'] = f1_score(label_trues, label_preds, labels=np.arange(class_no), average='macro', zero_division=0)
         f1_score_classwise = f1_score(label_trues, label_preds, labels=np.arange(class_no), average=None, zero_division=0)
 
-        # results['macro_dice'] = dice_per_class.mean()
+        results['macro_dice'] = dice_per_class.mean()
 
         # intersection = (label_preds == label_trues).sum(axis=None)
         # sum_ = 2 * np.prod(label_preds.shape)

@@ -87,7 +87,8 @@ class PiononoHead(nn.Module):
     A function composed of no_convs_fcomb times a 1x1 convolution that combines the sample taken from the latent space,
     and output of the UNet (the feature map) by concatenating them along their channel axis.
     """
-    def __init__(self, num_filters_last_layer, latent_dim, num_output_channels, num_classes, no_convs_fcomb, use_tile=True):
+    def __init__(self, num_filters_last_layer, latent_dim, num_output_channels, num_classes, no_convs_fcomb,
+                 head_kernelsize, use_tile=True):
         super(PiononoHead, self).__init__()
         self.num_channels = num_output_channels #output channels
         self.num_classes = num_classes
@@ -97,21 +98,25 @@ class PiononoHead(nn.Module):
         self.latent_dim = latent_dim
         self.use_tile = use_tile
         self.no_convs_fcomb = no_convs_fcomb
+        self.head_kernelsize = head_kernelsize
         self.name = 'PiononoHead'
 
         if self.use_tile:
             layers = []
 
             #Decoder of N x a 1x1 convolution followed by a ReLU activation function except for the last layer
-            layers.append(nn.Conv2d(self.num_filters_last_layer+self.latent_dim, self.num_filters_last_layer, kernel_size=1))
+            layers.append(nn.Conv2d(self.num_filters_last_layer+self.latent_dim, self.num_filters_last_layer,
+                                    kernel_size=self.head_kernelsize, padding='same'))
             layers.append(nn.ReLU(inplace=True))
 
             for _ in range(no_convs_fcomb-2):
-                layers.append(nn.Conv2d(self.num_filters_last_layer, self.num_filters_last_layer, kernel_size=1))
+                layers.append(nn.Conv2d(self.num_filters_last_layer, self.num_filters_last_layer,
+                                        kernel_size=self.head_kernelsize, padding='same'))
                 layers.append(nn.ReLU(inplace=True))
 
             self.layers = nn.Sequential(*layers)
-            self.last_layer = nn.Conv2d(self.num_filters_last_layer, self.num_classes, kernel_size=1)
+            self.last_layer = nn.Conv2d(self.num_filters_last_layer, self.num_classes, kernel_size=self.head_kernelsize,
+                                        padding='same')
             self.activation = torch.nn.Softmax(dim=1)
 
             self.layers.apply(self.initialize_weights)
@@ -166,14 +171,15 @@ class PiononoModel(nn.Module):
     """
 
     def __init__(self, input_channels=3, num_classes=1, num_annotators=6, predict_annotator=0, latent_dim=6,
-                 z_prior_mu=0.0, z_prior_sigma=1.0, z_posterior_init_sigma=0.0, no_head_layers=4, kl_factor=1.0,
-                 reg_factor=0.1, mc_samples=5):
+                 z_prior_mu=0.0, z_prior_sigma=1.0, z_posterior_init_sigma=0.0, no_head_layers=4, head_kernelsize = 1,
+                 kl_factor=1.0, reg_factor=0.1, mc_samples=5):
         super(PiononoModel, self).__init__()
         self.input_channels = input_channels
         self.num_classes = num_classes
         self.latent_dim = latent_dim
         self.predict_annotator = predict_annotator
         self.no_head_layers = no_head_layers
+        self.head_kernelsize = head_kernelsize
         self.kl_factor = kl_factor
         self.reg_factor = reg_factor
         self.mc_samples = mc_samples
@@ -181,7 +187,7 @@ class PiononoModel(nn.Module):
         self.z = LatentVariable(num_annotators, latent_dim, prior_mu_value=z_prior_mu, prior_sigma_value=z_prior_sigma,
                                 z_posterior_init_sigma=z_posterior_init_sigma).to(device)
         self.head = PiononoHead(16, self.latent_dim, self.input_channels, self.num_classes,
-                                self.no_head_layers, use_tile=True).to(device)
+                                self.no_head_layers, self.head_kernelsize, use_tile=True).to(device)
         self.phase = 'segmentation'
         self.name = 'PiononoModel'
 

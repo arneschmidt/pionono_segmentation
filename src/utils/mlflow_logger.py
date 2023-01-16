@@ -12,6 +12,7 @@ def start_logging():
 
     data_config_log = config['data'].copy()
     data_config_log.pop('visualize_images') # drop this because it is often to long to be logged
+    data_config_log.pop('repeat_train_images') # drop this because it is often to long to be logged
 
     # experiment = mlflow.set_experiment(experiment_name=config["data"]["dataset_name"])
     mlflow.set_experiment(experiment_name=config["data"]["dataset_name"])

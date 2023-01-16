@@ -40,11 +40,8 @@ class ModelHandler():
 
         save_image_color_legend()
 
-        # Optimizer
-
         optimizer, loss_fct = init_optimization(model)
 
-        loss_dict = {}
         # Training loop
         for i in range(0, epochs):
             print('\nEpoch: {}'.format(i))
@@ -62,7 +59,6 @@ class ModelHandler():
                 # zero the parameter gradients
                 optimizer.zero_grad()
 
-                # Foward+loss (crowd or not)
                 _, labels = torch.max(labels, dim=1)
                 loss, y_pred = model.train_step(images, labels, loss_fct, ann_ids)
 
@@ -78,8 +74,6 @@ class ModelHandler():
                 if not torch.isnan(loss):
                     loss.backward()
                     optimizer.step()
-
-            # Save validation results
 
             mlflow.log_metric('finished_epochs', self.epoch + 1, int((i + 1) * len(trainloader) * batch_s))
 
@@ -101,6 +95,7 @@ class ModelHandler():
     def test(self, testloaders):
         set_test_output_dir()
         save_image_color_legend()
+        globals.config['logging']['experiment_epoch_folder'] = 'test'
         results = self.evaluate(testloaders)
         log_results_list(results, mode='test', step=None)
         save_results(results)
