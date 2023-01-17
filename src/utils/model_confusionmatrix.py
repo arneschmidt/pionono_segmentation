@@ -84,8 +84,10 @@ class cm_layers(torch.nn.Module):
     has the size (b, c**2, h, w)
     """
 
-    def __init__(self, in_channels, norm, class_no, noisy_labels_no):
+    def __init__(self, in_channels, input_height, input_width, norm, class_no, noisy_labels_no):
         super(cm_layers, self).__init__()
+        self.input_height = input_height
+        self.input_width = input_width
         self.conv_1 = double_conv(in_channels=in_channels, out_channels=in_channels, norm=norm, step=1)
         self.conv_2 = double_conv(in_channels=in_channels, out_channels=in_channels, norm=norm, step=1)
         # self.conv_last = torch.nn.Conv2d(in_channels, class_no ** 2, 1, bias=True)
@@ -107,7 +109,7 @@ class cm_layers(torch.nn.Module):
         A_id = self.relu(self.dense_annotator(A_id))  # B, F_A
         #print("A_id", A_id.shape)
         #print("image features", y.shape)
-        A_id = A_id.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 512, 512)
+        A_id = A_id.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, self.input_height, self.input_width)
         #print("A_id", A_id.shape)
 
         y = torch.cat((A_id, y), dim=1)
@@ -118,8 +120,8 @@ class cm_layers(torch.nn.Module):
         y = self.relu((self.dense(y)))
         y = self.dense2(y)
         
-        y = self.relu(y.view(-1, 512, 512, self.class_no, self.class_no))
-        y = y.view(-1, 512, 512, self.class_no ** 2).permute(0,3,1,2)
+        y = self.relu(y.view(-1, self.input_height, self.input_width, self.class_no, self.class_no))
+        y = y.view(-1, self.input_height, self.input_width, self.class_no ** 2).permute(0,3,1,2)
 
         return y
 
@@ -238,7 +240,7 @@ class ConfusionMatrixModel(torch.nn.Module):
             self.crowd_layers = image_CM(self.num_classes, self.image_res, self.image_res, self.num_annotators)
         elif self.level == 'pixel':
             print("Pixel dependent crowdsourcing")
-            self.crowd_layers = cm_layers(in_channels=16, norm='in',
+            self.crowd_layers = cm_layers(in_channels=16, input_height=image_res, input_width=image_res, norm='in',
                                           class_no=self.num_classes, noisy_labels_no=self.num_annotators)  # TODO: arrange in_channels
         self.crowd_layers.to(device)
         self.activation = torch.nn.Softmax(dim=1)
@@ -248,9 +250,6 @@ class ConfusionMatrixModel(torch.nn.Module):
         x = self.seg_model.encoder(x)
         x = self.seg_model.decoder(*x)
         if A_id is not None:
-            # A_onehot = torch.zeros(int(A_id.shape[0]), self.num_annotators).to(device)
-            # A_onehot[A_id.int()] = 1
-            # A_onehot.requires_grad = False
             A_onehot = F.one_hot(A_id.long(), self.num_annotators)
             cm = self.crowd_layers(A_onehot.float(), x)
         x = self.seg_model.segmentation_head(x)
