@@ -28,12 +28,12 @@ def main():
     start_logging()
 
     # load data
-    trainloader, validateloaders, testloaders, annotators = get_data()
+    trainloader, validate_data, test_data, annotators = get_data()
 
     # load and train the model
     model_handler = ModelHandler(annotators)
-    model_handler.train(trainloader, validateloaders)
-    model_handler.test(testloaders)
+    model_handler.train(trainloader, validate_data)
+    model_handler.test(test_data)
 
 
 if __name__ == "__main__":

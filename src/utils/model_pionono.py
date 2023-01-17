@@ -170,14 +170,14 @@ class PiononoModel(nn.Module):
     no_cons_per_block: no convs per block in the (convolutional) encoder of prior and posterior
     """
 
-    def __init__(self, input_channels=3, num_classes=1, num_annotators=6, predict_annotator=0, latent_dim=6,
+    def __init__(self, input_channels=3, num_classes=1, num_annotators=6, gold_annotators=[0], latent_dim=6,
                  z_prior_mu=0.0, z_prior_sigma=1.0, z_posterior_init_sigma=0.0, no_head_layers=4, head_kernelsize = 1,
                  kl_factor=1.0, reg_factor=0.1, mc_samples=5):
         super(PiononoModel, self).__init__()
         self.input_channels = input_channels
         self.num_classes = num_classes
         self.latent_dim = latent_dim
-        self.predict_annotator = predict_annotator
+        self.gold_annotators = gold_annotators
         self.no_head_layers = no_head_layers
         self.head_kernelsize = head_kernelsize
         self.kl_factor = kl_factor
@@ -199,22 +199,34 @@ class PiononoModel(nn.Module):
         """
         self.unet_features = self.unet.forward(patch)
 
-    def sample(self, use_z_mean: bool = False, annotator: torch.tensor = None):
+    def sample(self, use_z_mean: bool, annotator: torch.tensor):
         """
         Sample a segmentation by reconstructing from a prior sample
         and combining this with UNet features
         """
-        if annotator is None:
-            annotator = torch.ones(self.unet_features.shape[0]).to(device) * self.predict_annotator
-        self.current_annotator = annotator
 
         if use_z_mean == False:
-            z = self.z.forward(self.current_annotator, sample=True)
+            z = self.z.forward(annotator, sample=True)
         else:
-            z = self.z.forward(self.current_annotator, sample=False)
+            z = self.z.forward(annotator, sample=False)
         pred = self.head.forward(self.unet_features, z)
 
         return pred
+
+    def get_gold_predictions(self):
+        if len(self.gold_annotators) == 1:
+            annotator = torch.ones(self.unet_features.shape[0]).to(device) * self.gold_annotators[0]
+            mean, var = self.mc_sampling(annotator)
+        else:
+            shape = [self.mc_samples * len(self.gold_annotators), self.unet_features.shape[0], self.num_classes,
+                     self.unet_features.shape[-2], self.unet_features.shape[-1]]
+            samples = torch.zeros(shape).to(device)
+            for a in range(len(self.gold_annotators)):
+                for i in range(self.mc_samples):
+                    samples[(a+1)*i] = self.sample(use_z_mean=False, annotator=self.gold_annotators[a])
+            mean = torch.mean(samples, dim=0)
+            var = torch.var(samples, dim=0)
+        return mean, var
 
     def mc_sampling(self, annotator: torch.tensor = None):
         shape = [self.mc_samples, annotator.shape[0], self.num_classes, self.unet_features.shape[-2], self.unet_features.shape[-1]]

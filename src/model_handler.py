@@ -32,7 +32,7 @@ class ModelHandler():
             warnings.warn("Running on CPU because no GPU was found!")
             self.device = torch.device('cpu')
 
-    def train(self, trainloader, validateloaders):
+    def train(self, trainloader, validate_data):
         config = globals.config
         model = self.model
         epochs = config['model']['epochs']
@@ -78,7 +78,7 @@ class ModelHandler():
             mlflow.log_metric('finished_epochs', self.epoch + 1, int((i + 1) * len(trainloader) * batch_s))
 
             if i % int(config['logging']['artifact_interval']) == 0:
-                val_results = self.evaluate(validateloaders, mode='val')
+                val_results = self.evaluate(validate_data, mode='val')
                 log_results_list(val_results, mode='val', step=int((i + 1) * len(trainloader) * batch_s))
                 save_model_distributions(model)
                 save_grad_flow(model.named_parameters())
@@ -92,14 +92,14 @@ class ModelHandler():
                     g['lr'] = g['lr'] / (1 + config['model']['lr_decay_param'])
         save_model(model)
 
-    def test(self, testloaders):
+    def test(self, test_data):
         set_test_output_dir()
         save_image_color_legend()
-        results = self.evaluate(testloaders)
+        results = self.evaluate(test_data)
         log_results_list(results, mode='test', step=None)
         mlflow.log_artifacts(globals.config['logging']['experiment_folder'])
 
-    def evaluate(self, evaluatedata_list, mode='test'):
+    def evaluate(self, data, mode='test'):
         config = globals.config
         class_no = config['data']['class_no']
         vis_images = config['data']['visualize_images'][mode]
@@ -115,17 +115,22 @@ class ModelHandler():
 
         device = self.device
         model.eval()
+        annotator_list = data[0]
+        loader_list = data[1]
 
         with torch.no_grad():
             results_list = []
-            for e in range(len(evaluatedata_list)):
+            for e in range(len(loader_list)):
                 labels = []
                 preds = []
-                for j, (test_img, test_label, test_name, ann_id) in enumerate(evaluatedata_list[e]):
+                for j, (test_img, test_label, test_name, ann_id) in enumerate(loader_list[e]):
                     test_img = test_img.to(device=device, dtype=torch.float32)
                     if config['model']['method'] == 'pionono':
                         model.forward(test_img)
-                        test_pred = model.sample(use_z_mean=True)
+                        if 'STAPLE' in annotator_list[e] or 'MV' in annotator_list[e]:
+                            test_pred, _ = model.get_gold_predictions()
+                        else:
+                            test_pred = model.sample(use_z_mean=True, annotator=ann_id)
                     elif config['model']['method'] == 'prob_unet':
                         model.forward(test_img, None, training=False)
                         test_pred = model.sample(testing=True)

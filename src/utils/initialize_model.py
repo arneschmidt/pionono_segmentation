@@ -18,18 +18,18 @@ def init_model(annotators):
         # model = ProbabilisticUnet(3, config['data']['class_no'])
     elif config['model']['method'] == 'pionono':
         model = PiononoModel(input_channels=3, num_classes=config['data']['class_no'],
-                                  num_annotators=len(annotators),
-                                  predict_annotator=config['model']['pionono_config']['gold_annotator'],
-                                  latent_dim=config['model']['pionono_config']['latent_dim'],
-                                  z_prior_mu=config['model']['pionono_config']['z_prior_mu'],
-                                  z_prior_sigma=config['model']['pionono_config']['z_prior_sigma'],
-                                  z_posterior_init_sigma=config['model']['pionono_config']['z_posterior_mu_rand_sigma'],
-                                  no_head_layers=config['model']['pionono_config']['no_head_layers'],
-                                  head_kernelsize=config['model']['pionono_config']['head_kernelsize'],
-                                  kl_factor=config['model']['pionono_config']['kl_factor'],
-                                  reg_factor=config['model']['pionono_config']['reg_factor'],
-                                  mc_samples=config['model']['pionono_config']['mc_samples']
-                                  )
+                             num_annotators=len(annotators),
+                             gold_annotators=config['model']['pionono_config']['gold_annotators'],
+                             latent_dim=config['model']['pionono_config']['latent_dim'],
+                             z_prior_mu=config['model']['pionono_config']['z_prior_mu'],
+                             z_prior_sigma=config['model']['pionono_config']['z_prior_sigma'],
+                             z_posterior_init_sigma=config['model']['pionono_config']['z_posterior_mu_rand_sigma'],
+                             no_head_layers=config['model']['pionono_config']['no_head_layers'],
+                             head_kernelsize=config['model']['pionono_config']['head_kernelsize'],
+                             kl_factor=config['model']['pionono_config']['kl_factor'],
+                             reg_factor=config['model']['pionono_config']['reg_factor'],
+                             mc_samples=config['model']['pionono_config']['mc_samples']
+                             )
     elif config['model']['method'] == 'conf_matrix':
         model = ConfusionMatrixModel(num_classes=config['data']['class_no'], annotators=annotators,
                                      level=config['model']['conf_matrix_config']['level'],
