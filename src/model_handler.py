@@ -95,10 +95,8 @@ class ModelHandler():
     def test(self, testloaders):
         set_test_output_dir()
         save_image_color_legend()
-        globals.config['logging']['experiment_epoch_folder'] = 'test'
         results = self.evaluate(testloaders)
         log_results_list(results, mode='test', step=None)
-        save_results(results)
         mlflow.log_artifacts(globals.config['logging']['experiment_folder'])
 
     def evaluate(self, evaluatedata_list, mode='test'):

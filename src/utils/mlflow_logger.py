@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import mlflow
 
 import utils.globals as globals
+from utils.saving import save_results
 
 def start_logging():
     config = globals.config
@@ -44,6 +45,8 @@ def log_results_list(results_list, mode, step=None):
             new_key = new_prefix + '_' + key
             formatted_results[new_key] = results_list[a][key]
     log_results(formatted_results, mode, step)
+    if mode == 'test':
+        save_results(formatted_results)
 
 def set_epoch_output_dir(epoch: int):
     if epoch % int(globals.config['logging']['artifact_interval']) == 0:

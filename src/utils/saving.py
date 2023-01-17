@@ -215,7 +215,6 @@ def save_results(results):
     dir = os.path.join(globals.config['logging']['experiment_epoch_folder'], results_dir)
     os.makedirs(dir, exist_ok=True)
     out_path = os.path.join(dir, 'results.csv')
-
     with open(out_path, 'w') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in results.items():
