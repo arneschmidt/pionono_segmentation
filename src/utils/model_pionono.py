@@ -223,7 +223,8 @@ class PiononoModel(nn.Module):
             samples = torch.zeros(shape).to(device)
             for a in range(len(self.gold_annotators)):
                 for i in range(self.mc_samples):
-                    samples[(a+1)*i] = self.sample(use_z_mean=False, annotator=self.gold_annotators[a])
+                    samples[(a*self.mc_samples)+i] = self.sample(use_z_mean=False,
+                                                   annotator=torch.ones(self.unet_features.shape[0]).to(device)*self.gold_annotators[a])
             mean = torch.mean(samples, dim=0)
             var = torch.var(samples, dim=0)
         return mean, var
