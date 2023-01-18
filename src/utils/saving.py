@@ -225,7 +225,7 @@ def convert_var_to_rgb(var):
     w = var.shape[1]
     var_rgb = np.zeros((h, w, 3), dtype=np.uint8)
 
-    var_rgb[:, :, 0]= np.clip(255 - (var*255), a_min=0, a_max=255).astype(int)
+    var_rgb[:, :, 0]= np.clip(255 - (var*500), a_min=0, a_max=255).astype(int)
     var_rgb[:, :, 1]= 255
     var_rgb[:, :, 2]= 255
 

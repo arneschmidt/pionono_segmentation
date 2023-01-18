@@ -207,7 +207,7 @@ class PiononoModel(nn.Module):
             new_ids[a] = torch.nonzero(torch.tensor(annotator_list[int(annotator_ids[a])] == np.array(self.annotators)))[0][0]
         return new_ids
 
-    def sample(self, use_z_mean: bool, annotator_ids: torch.tensor, annotator_list:list = None):
+    def sample(self, use_z_mean: bool, annotator_ids: torch.tensor, annotator_list: list = None):
         """
         Sample a segmentation by reconstructing from a prior sample
         and combining this with UNet features
@@ -222,7 +222,6 @@ class PiononoModel(nn.Module):
         pred = self.head.forward(self.unet_features, z)
 
         return pred
-
 
     def get_gold_predictions(self):
         if len(self.gold_annotators) == 1:
