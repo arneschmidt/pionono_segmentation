@@ -18,7 +18,7 @@ def init_model(annotators):
         # model = ProbabilisticUnet(3, config['data']['class_no'])
     elif config['model']['method'] == 'pionono':
         model = PiononoModel(input_channels=3, num_classes=config['data']['class_no'],
-                             num_annotators=len(annotators),
+                             annotators=annotators,
                              gold_annotators=config['model']['pionono_config']['gold_annotators'],
                              latent_dim=config['model']['pionono_config']['latent_dim'],
                              z_prior_mu=config['model']['pionono_config']['z_prior_mu'],

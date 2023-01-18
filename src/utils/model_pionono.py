@@ -2,10 +2,8 @@ import torch
 from torch import nn
 import utils.globals
 import numpy as np
-from Probabilistic_Unet_Pytorch.utils import init_weights,init_weights_orthogonal_normal, l2_regularisation
-from torch.distributions import Normal, Independent, kl
+from Probabilistic_Unet_Pytorch.utils import l2_regularisation
 from utils.model_headless import UnetHeadless
-from segmentation_models_pytorch import Unet
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class LatentVariable(nn.Module):
@@ -28,7 +26,7 @@ class LatentVariable(nn.Module):
         self.posterior_covtril = torch.nn.Parameter(posterior_cov)
         self.name = 'LatentVariable'
 
-    def _init_distributions(self, prior_mu=np.array(0.0), prior_sigma=np.array(1.0)):
+    def _init_distributions(self, prior_mu=0.0, prior_sigma=1.0):
         mu_list = []
         cov_list = []
         prior_mu = np.array(prior_mu)
@@ -170,13 +168,14 @@ class PiononoModel(nn.Module):
     no_cons_per_block: no convs per block in the (convolutional) encoder of prior and posterior
     """
 
-    def __init__(self, input_channels=3, num_classes=1, num_annotators=6, gold_annotators=[0], latent_dim=6,
+    def __init__(self, input_channels=3, num_classes=1, annotators=6, gold_annotators=[0], latent_dim=6,
                  z_prior_mu=0.0, z_prior_sigma=1.0, z_posterior_init_sigma=0.0, no_head_layers=4, head_kernelsize = 1,
                  kl_factor=1.0, reg_factor=0.1, mc_samples=5):
         super(PiononoModel, self).__init__()
         self.input_channels = input_channels
         self.num_classes = num_classes
         self.latent_dim = latent_dim
+        self.annotators = annotators
         self.gold_annotators = gold_annotators
         self.no_head_layers = no_head_layers
         self.head_kernelsize = head_kernelsize
@@ -184,7 +183,7 @@ class PiononoModel(nn.Module):
         self.reg_factor = reg_factor
         self.mc_samples = mc_samples
         self.unet = UnetHeadless().to(device)
-        self.z = LatentVariable(num_annotators, latent_dim, prior_mu_value=z_prior_mu, prior_sigma_value=z_prior_sigma,
+        self.z = LatentVariable(len(annotators), latent_dim, prior_mu_value=z_prior_mu, prior_sigma_value=z_prior_sigma,
                                 z_posterior_init_sigma=z_posterior_init_sigma).to(device)
         self.head = PiononoHead(16, self.latent_dim, self.input_channels, self.num_classes,
                                 self.no_head_layers, self.head_kernelsize, use_tile=True).to(device)
@@ -199,19 +198,31 @@ class PiononoModel(nn.Module):
         """
         self.unet_features = self.unet.forward(patch)
 
-    def sample(self, use_z_mean: bool, annotator: torch.tensor):
+    def map_annotators_to_correct_id(self, annotator_ids: torch.tensor, annotator_list:list = None):
+        new_ids = torch.zeros_like(annotator_ids).to(device)
+        for a in range(len(annotator_ids)):
+            id_corresponds = (annotator_list[int(annotator_ids[a])] == np.array(self.annotators))
+            if not np.any(id_corresponds):
+                raise Exception('Annotator has no corresponding distribution. Annotator: ' + str(annotator_list[int(annotator_ids[a])]))
+            new_ids[a] = torch.nonzero(torch.tensor(annotator_list[int(annotator_ids[a])] == np.array(self.annotators)))[0][0]
+        return new_ids
+
+    def sample(self, use_z_mean: bool, annotator_ids: torch.tensor, annotator_list:list = None):
         """
         Sample a segmentation by reconstructing from a prior sample
         and combining this with UNet features
         """
+        if annotator_list is not None:
+            annotator_ids = self.map_annotators_to_correct_id(annotator_ids, annotator_list)
 
         if use_z_mean == False:
-            z = self.z.forward(annotator, sample=True)
+            z = self.z.forward(annotator_ids, sample=True)
         else:
-            z = self.z.forward(annotator, sample=False)
+            z = self.z.forward(annotator_ids, sample=False)
         pred = self.head.forward(self.unet_features, z)
 
         return pred
+
 
     def get_gold_predictions(self):
         if len(self.gold_annotators) == 1:
@@ -224,7 +235,7 @@ class PiononoModel(nn.Module):
             for a in range(len(self.gold_annotators)):
                 for i in range(self.mc_samples):
                     samples[(a*self.mc_samples)+i] = self.sample(use_z_mean=False,
-                                                   annotator=torch.ones(self.unet_features.shape[0]).to(device)*self.gold_annotators[a])
+                                                                 annotator_ids=torch.ones(self.unet_features.shape[0]).to(device) * self.gold_annotators[a])
             mean = torch.mean(samples, dim=0)
             var = torch.var(samples, dim=0)
         return mean, var
@@ -233,7 +244,7 @@ class PiononoModel(nn.Module):
         shape = [self.mc_samples, annotator.shape[0], self.num_classes, self.unet_features.shape[-2], self.unet_features.shape[-1]]
         samples = torch.zeros(shape).to(device)
         for i in range(self.mc_samples):
-            samples[i] = self.sample(use_z_mean=False, annotator=annotator)
+            samples[i] = self.sample(use_z_mean=False, annotator_ids=annotator)
         mean = torch.mean(samples, dim=0)
         var = torch.var(samples, dim=0)
         return mean, var

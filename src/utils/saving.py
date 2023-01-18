@@ -53,7 +53,7 @@ def save_test_images(test_imgs:torch.Tensor, test_preds: np.array, test_labels: 
 
 def save_test_image_variability(model, test_name, k, mode):
     no_samples_per_annotator = 6
-    annotators = globals.config['data']['train']['masks']
+    annotators = globals.config['data']['val']['masks']
     method = globals.config['model']['method']
     class_no = globals.config['data']['class_no']
     visual_dir = 'qualitative_results/' + mode
@@ -65,18 +65,29 @@ def save_test_image_variability(model, test_name, k, mode):
             a = annotators[i]
             a_dir = os.path.join(dir, a)
             os.makedirs(a_dir, exist_ok=True)
-            annotator = torch.ones(model.unet_features.shape[0]) * i
-            mean_pred = model.sample(use_z_mean=True, annotator=annotator)
-            _, mean_pred = torch.max(mean_pred[:, 0:class_no], dim=1)
-            mean_pred_k = convert_classes_to_rgb(mean_pred[k].cpu().detach().numpy())
-            out_path = os.path.join(a_dir, 'pred_' + test_name[k].replace(".png", "_mean" + ".png"))
-            imageio.imsave(out_path, mean_pred_k)
-            for s in range(no_samples_per_annotator -1):
-                pred = model.sample(use_z_mean=False, annotator=annotator)
+            if ('STAPLE' in annotators[i] or 'MV' in annotators[i]):
+                pred, var = model.get_gold_predictions()
                 _, pred = torch.max(pred[:, 0:class_no], dim=1)
-                out_path = os.path.join(a_dir, 'pred_' + test_name[k].replace(".png", "_s_" + str(s) + ".png"))
+                out_path = os.path.join(a_dir, 'pred_' + test_name[k].replace(".png", "_gold" + ".png"))
                 pred_k = convert_classes_to_rgb(pred[k].cpu().detach().numpy())
                 imageio.imsave(out_path, pred_k)
+                var = torch.mean(var[:, 0:class_no], dim=1)
+                out_path_var = os.path.join(a_dir, 'pred_' + test_name[k].replace(".png", "_gold_var" + ".png"))
+                var_k = convert_var_to_rgb(var[k].cpu().detach().numpy())
+                imageio.imsave(out_path_var, var_k)
+            else:
+                annotator = torch.ones(model.unet_features.shape[0]) * i
+                mean_pred = model.sample(use_z_mean=True, annotator_ids=annotator, annotator_list=annotators)
+                _, mean_pred = torch.max(mean_pred[:, 0:class_no], dim=1)
+                mean_pred_k = convert_classes_to_rgb(mean_pred[k].cpu().detach().numpy())
+                out_path = os.path.join(a_dir, 'pred_' + test_name[k].replace(".png", "_mean" + ".png"))
+                imageio.imsave(out_path, mean_pred_k)
+                for s in range(no_samples_per_annotator -1):
+                    pred = model.sample(use_z_mean=False, annotator_ids=annotator, annotator_list=annotators)
+                    _, pred = torch.max(pred[:, 0:class_no], dim=1)
+                    out_path = os.path.join(a_dir, 'pred_' + test_name[k].replace(".png", "_s_" + str(s) + ".png"))
+                    pred_k = convert_classes_to_rgb(pred[k].cpu().detach().numpy())
+                    imageio.imsave(out_path, pred_k)
 
 def save_model_distributions(model):
     dir_name = 'distributions'
@@ -208,6 +219,17 @@ def convert_classes_to_rgb(seg_classes):
         seg_rgb[:, :, 2][seg_classes == class_id] = CLASS_COLORS_BGR[class_id][0]
 
     return seg_rgb
+
+def convert_var_to_rgb(var):
+    h = var.shape[0]
+    w = var.shape[1]
+    var_rgb = np.zeros((h, w, 3), dtype=np.uint8)
+
+    var_rgb[:, :, 0]= np.clip(255 - (var*255), a_min=0, a_max=255).astype(int)
+    var_rgb[:, :, 1]= 255
+    var_rgb[:, :, 2]= 255
+
+    return var_rgb
 
 
 def save_results(results):

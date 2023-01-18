@@ -130,7 +130,7 @@ class ModelHandler():
                         if 'STAPLE' in annotator_list[e] or 'MV' in annotator_list[e]:
                             test_pred, _ = model.get_gold_predictions()
                         else:
-                            test_pred = model.sample(use_z_mean=True, annotator=ann_id)
+                            test_pred = model.sample(use_z_mean=True, annotator_ids=ann_id, annotator_list=annotator_list)
                     elif config['model']['method'] == 'prob_unet':
                         model.forward(test_img, None, training=False)
                         test_pred = model.sample(testing=True)
