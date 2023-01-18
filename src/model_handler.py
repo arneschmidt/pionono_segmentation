@@ -145,12 +145,15 @@ class ModelHandler():
 
                     preds.append(test_pred_np.astype(np.int8).copy().flatten())
                     labels.append(test_label.astype(np.int8).copy().flatten())
-                    if self.epoch % int(config['logging']['artifact_interval']) == 0 or mode == 'test':
-                        for k in range(len(test_name)):
-                            if test_name[k] in vis_images or vis_images == 'all':
-                                img = test_img[k]
-                                save_test_images(img, test_pred_np[k], test_label[k], test_name[k], mode)
-                                save_test_image_variability(model, test_name, k, mode)
+
+                    # We only want to execute the code below once for each image. We assume that STAPLE or MV is present.
+                    if 'STAPLE' in annotator_list[e] or 'MV' in annotator_list[e]:
+                        if self.epoch % int(config['logging']['artifact_interval']) == 0 or mode == 'test':
+                            for k in range(len(test_name)):
+                                if test_name[k] in vis_images or vis_images == 'all':
+                                    img = test_img[k]
+                                    save_test_images(img, test_pred_np[k], test_label[k], test_name[k], mode)
+                                    save_test_image_variability(model, test_name, k, mode)
 
                 preds = np.concatenate(preds, axis=0, dtype=np.int8).flatten()
                 labels = np.concatenate(labels, axis=0, dtype=np.int8).flatten()
@@ -160,19 +163,12 @@ class ModelHandler():
                     shortened = True
                 results = self.get_results(preds, labels, shortened)
 
-                print('RESULTS for ' + mode + ' Annotator: ' + str(e))
+                print('RESULTS for ' + mode + ' Annotator: ' + str(annotator_list[e]))
                 print(results)
                 results_list.append(results)
         return results_list
 
     def get_results(self, pred, label, shortened=False):
-        config = globals.config
-        class_no = config['data']['class_no']
-        class_names = globals.config['data']['class_names']
-
-        if globals.config['data']['ignore_last_class_only_for_testing']:
-            class_no = class_no-1
-
         if torch.is_tensor(pred):
             pred = pred.cpu().detach().numpy().copy().flatten()
         if torch.is_tensor(label):

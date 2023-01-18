@@ -139,6 +139,7 @@ class Dataset(torch.utils.data.Dataset):
             preprocessing=None,
             repeat_images=None,
             repeat_factor=1,
+            annotator_ids='auto',
             _set = None
     ):
 
@@ -156,6 +157,7 @@ class Dataset(torch.utils.data.Dataset):
         self.class_values = self.set_class_values(self.class_no)
         self.augmentation = augmentation
         self.preprocessing = preprocessing
+        self.annotator_ids = annotator_ids
 
         if globals.config['data']['ignore_last_class']:
             self.ignore_index = int(self.class_no) # deleted class is always set to the last index
@@ -173,10 +175,11 @@ class Dataset(torch.utils.data.Dataset):
             mask_path = os.path.join(ann_path, self.ids[i])
             if os.path.exists(mask_path):
                 mask = cv2.imread(mask_path, 0)
-                # extract certain classes from mask (e.g. cars)
-                # annotator_id = torch.zeros(len(self.annotators_fps))
-                # annotator_id[self.annotators_fps.index(ann_path)] = 1
-                annotator_id = self.mask_paths.index(ann_path)
+                id = self.mask_paths.index(ann_path)
+                if self.annotator_ids == 'auto':
+                    annotator_id = id
+                else:
+                    annotator_id = self.annotator_ids[id]
                 break
 
                 # print("Exist ", mask_path)
@@ -268,7 +271,8 @@ def get_data():
         validate_dataset = Dataset(config['data']['path'],
                                    config['data']['val']['images'],
                                    [val_masks[a]],
-                                   preprocessing=preprocessing)
+                                   preprocessing=preprocessing,
+                                   annotator_ids=[a])
         validateloaders.append(data.DataLoader(validate_dataset, batch_size=batch_size, shuffle=False,
                                                num_workers=batch_size, drop_last=False))
     validate_data = (val_masks, validateloaders)
@@ -280,7 +284,8 @@ def get_data():
         test_dataset = Dataset(config['data']['path'],
                                config['data']['test']['images'],
                                [test_masks[a]],
-                               preprocessing=preprocessing)
+                               preprocessing=preprocessing,
+                               annotator_ids=[a])
         testloaders.append(data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=batch_size,
                                            drop_last=False))
     test_data = (test_masks, testloaders)

@@ -265,7 +265,7 @@ class ConfusionMatrixModel(torch.nn.Module):
 
     def activate_min_trace(self):
         print("Minimize trace activated!")
-        min_trace = True
+        self.min_trace = True
         print("Alpha updated", self.alpha)
         optimizer = torch.optim.Adam([
             {'params': self.seg_model.parameters()},
