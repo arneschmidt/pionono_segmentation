@@ -26,6 +26,7 @@ def init_model(annotators):
                              z_posterior_init_sigma=config['model']['pionono_config']['z_posterior_mu_rand_sigma'],
                              no_head_layers=config['model']['pionono_config']['no_head_layers'],
                              head_kernelsize=config['model']['pionono_config']['head_kernelsize'],
+                             head_dilation=config['model']['pionono_config']['head_dilation'],
                              kl_factor=config['model']['pionono_config']['kl_factor'],
                              reg_factor=config['model']['pionono_config']['reg_factor'],
                              mc_samples=config['model']['pionono_config']['mc_samples']
