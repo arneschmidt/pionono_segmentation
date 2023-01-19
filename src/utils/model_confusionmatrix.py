@@ -80,7 +80,7 @@ class gcm_layers(torch.nn.Module):
 
 class cm_layers(torch.nn.Module):
     """ This class defines the annotator network, which models the confusion matrix.
-    Essentially, it share the semantic features with the segmentation network, but the output of annotator network
+    Essentially, it shares the semantic features with the segmentation network, but the output of annotator network
     has the size (b, c**2, h, w)
     """
 

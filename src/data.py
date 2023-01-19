@@ -170,6 +170,7 @@ class Dataset(torch.utils.data.Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         size_image, _, _ = image.shape
         indexes = np.random.permutation(self.annotators_no)
+        mask_found = False
         for ann_index in indexes:
             ann_path = self.mask_paths[ann_index]
             mask_path = os.path.join(ann_path, self.ids[i])
@@ -180,13 +181,12 @@ class Dataset(torch.utils.data.Dataset):
                     annotator_id = id
                 else:
                     annotator_id = self.annotator_ids[id]
+                mask_found = True
                 break
-
-                # print("Exist ", mask_path)
             else:
-                # print("Not exist ", mask_path)
                 continue
-
+        if not mask_found:
+            raise Exception('No mask was found for image: ' + self.images_fps[i])
         # apply augmentations
         if self.augmentation:
             # print("Augmentation!")
@@ -229,7 +229,7 @@ class Dataset(torch.utils.data.Dataset):
         valid_ids = np.intersect1d(image_ids, all_unique_masks)
 
         if repeat_images is not None:
-            repeat_ids = np.intersect1d(image_ids, repeat_images)
+            repeat_ids = np.intersect1d(valid_ids, repeat_images)
             for i in range(repeat_factor):
                 valid_ids = np.concatenate([valid_ids, repeat_ids], axis=0)
 
