@@ -169,7 +169,7 @@ class PiononoModel(nn.Module):
     """
 
     def __init__(self, input_channels=3, num_classes=1, annotators=6, gold_annotators=[0], latent_dim=6,
-                 z_prior_mu=0.0, z_prior_sigma=1.0, z_posterior_init_sigma=0.0, no_head_layers=4, head_kernelsize = 1,
+                 z_prior_mu=0.0, z_prior_sigma=2.0, z_posterior_init_sigma=4.0, no_head_layers=4, head_kernelsize = 1,
                  head_dilation = 1, kl_factor=1.0, reg_factor=0.1, mc_samples=5):
         super(PiononoModel, self).__init__()
         self.input_channels = input_channels
