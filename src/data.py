@@ -19,7 +19,7 @@ def get_training_augmentation():
         train_transform = [
             albu.HorizontalFlip(p=0.5),
             albu.VerticalFlip(p=0.5),
-            albu.Blur(blur_limit=aug_config['gaussian_blur_kernel'], p=0.5),
+            albu.Blur(blur_limit=aug_config['gaussian_blur_kernel'], p=0.8),
             albu.RandomBrightnessContrast(brightness_limit=aug_config['brightness_limit'],
                                           contrast_limit=aug_config['contrast_limit'],
                                           p=1.0),

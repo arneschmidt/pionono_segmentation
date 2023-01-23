@@ -224,10 +224,10 @@ def convert_var_to_rgb(var):
     h = var.shape[0]
     w = var.shape[1]
     var_rgb = np.zeros((h, w, 3), dtype=np.uint8)
-
-    var_rgb[:, :, 0]= np.clip(255 - (var*500), a_min=0, a_max=255).astype(int)
-    var_rgb[:, :, 1]= 255
-    var_rgb[:, :, 2]= 255
+    values = np.clip(255 - (var*1000), a_min=0, a_max=255).astype(int)
+    var_rgb[:, :, 0]= values
+    var_rgb[:, :, 1]= values
+    var_rgb[:, :, 2]= values
 
     return var_rgb
 
