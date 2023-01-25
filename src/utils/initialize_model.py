@@ -26,7 +26,8 @@ def init_model(annotators):
                              head_dilation=config['model']['pionono_config']['head_dilation'],
                              kl_factor=config['model']['pionono_config']['kl_factor'],
                              reg_factor=config['model']['pionono_config']['reg_factor'],
-                             mc_samples=config['model']['pionono_config']['mc_samples']
+                             mc_samples=config['model']['pionono_config']['mc_samples'],
+                             z_prior_sigma=config['model']['pionono_config']['z_prior_sigma']
                              )
     elif config['model']['method'] == 'conf_matrix':
         model = ConfusionMatrixModel(num_classes=config['data']['class_no'], annotators=annotators,

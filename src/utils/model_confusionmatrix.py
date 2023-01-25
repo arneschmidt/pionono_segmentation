@@ -78,14 +78,14 @@ class gcm_layers(torch.nn.Module):
         return y
 
 
-class cm_layers(torch.nn.Module):
+class PixelCM(torch.nn.Module):
     """ This class defines the annotator network, which models the confusion matrix.
     Essentially, it shares the semantic features with the segmentation network, but the output of annotator network
     has the size (b, c**2, h, w)
     """
 
     def __init__(self, in_channels, input_height, input_width, norm, class_no, noisy_labels_no):
-        super(cm_layers, self).__init__()
+        super(PixelCM, self).__init__()
         self.input_height = input_height
         self.input_width = input_width
         self.conv_1 = double_conv(in_channels=in_channels, out_channels=in_channels, norm=norm, step=1)
@@ -126,13 +126,13 @@ class cm_layers(torch.nn.Module):
         return y
 
 
-class global_CM(torch.nn.Module):
+class GlobalCM(torch.nn.Module):
     """ This defines the global confusion matrix layer. It defines a (class_no x class_no) confusion matrix, we then use unsqueeze function to match the
     size with the original pixel-wise confusion matrix layer, this is due to convenience to be compact with the existing loss function and pipeline.
     """
 
     def __init__(self, class_no, input_height, input_width, noisy_labels_no):
-        super(global_CM, self).__init__()
+        super(GlobalCM, self).__init__()
         self.class_no = class_no
         self.noisy_labels_no = noisy_labels_no
         self.input_height = input_height
@@ -189,13 +189,13 @@ class conv_layers_image(torch.nn.Module):
         return y
 
 
-class image_CM(torch.nn.Module):
+class ImageCM(torch.nn.Module):
     """ This defines the global confusion matrix layer. It defines a (class_no x class_no) confusion matrix, we then use unsqueeze function to match the
     size with the original pixel-wise confusion matrix layer, this is due to convenience to be compact with the existing loss function and pipeline.
     """
 
     def __init__(self, class_no, input_height, input_width, noisy_labels_no):
-        super(image_CM, self).__init__()
+        super(ImageCM, self).__init__()
         self.class_no = class_no
         self.noisy_labels_no = noisy_labels_no
         self.input_height = input_height
@@ -234,15 +234,15 @@ class ConfusionMatrixModel(torch.nn.Module):
         self.min_trace = min_trace
         if self.level == 'global':
             print("Global crowdsourcing")
-            self.crowd_layers = global_CM(self.num_classes, self.image_res, self.image_res, self.num_annotators)
+            self.conf_mat_layers = GlobalCM(self.num_classes, self.image_res, self.image_res, self.num_annotators)
         elif self.level == 'image':
             print("Image dependent crowdsourcing")
-            self.crowd_layers = image_CM(self.num_classes, self.image_res, self.image_res, self.num_annotators)
+            self.conf_mat_layers = ImageCM(self.num_classes, self.image_res, self.image_res, self.num_annotators)
         elif self.level == 'pixel':
             print("Pixel dependent crowdsourcing")
-            self.crowd_layers = cm_layers(in_channels=16, input_height=image_res, input_width=image_res, norm='in',
-                                          class_no=self.num_classes, noisy_labels_no=self.num_annotators)  # TODO: arrange in_channels
-        self.crowd_layers.to(device)
+            self.conf_mat_layers = PixelCM(in_channels=16, input_height=image_res, input_width=image_res, norm='in',
+                                           class_no=self.num_classes, noisy_labels_no=self.num_annotators)  # TODO: arrange in_channels
+        self.conf_mat_layers.to(device)
         self.activation = torch.nn.Softmax(dim=1)
 
     def forward(self, x, A_id=None):
@@ -251,7 +251,7 @@ class ConfusionMatrixModel(torch.nn.Module):
         x = self.seg_model.decoder(*x)
         if A_id is not None:
             A_onehot = F.one_hot(A_id.long(), self.num_annotators)
-            cm = self.crowd_layers(A_onehot.float(), x)
+            cm = self.conf_mat_layers(A_onehot.float(), x)
         x = self.seg_model.segmentation_head(x)
         y = self.activation(x)
         return y, cm
@@ -269,6 +269,6 @@ class ConfusionMatrixModel(torch.nn.Module):
         print("Alpha updated", self.alpha)
         optimizer = torch.optim.Adam([
             {'params': self.seg_model.parameters()},
-            {'params': self.crowd_layers.parameters(), 'lr': 1e-4}
+            {'params': self.conf_mat_layers.parameters(), 'lr': 1e-4}
         ], lr=self.learning_rate)
         return optimizer

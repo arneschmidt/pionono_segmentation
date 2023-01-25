@@ -67,7 +67,7 @@ class ModelHandler():
                         print("Iter {}/{} - batch loss : {:.4f}".format(j, len(trainloader), loss))
                         self.log_training_metrics(y_pred, labels, loss, model, i * len(trainloader) * batch_s + j)
                     self.store_train_imgs(imagename, images, labels, y_pred)
-                elif config['model']['method'] == 'conf_matrix' and i == 5:  # 10 for cr_image_dice // 5 rest of the methods
+                elif config['model']['method'] == 'conf_matrix' and i == config['model']['conf_matrix_config']['activate_min_trace_epoch']:  # 10 for cr_image_dice // 5 rest of the methods
                     optimizer = model.activate_min_trace()
 
                 # Backprop

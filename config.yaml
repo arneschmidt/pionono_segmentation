@@ -25,6 +25,7 @@ model:
     gold_annotators:
       - 0
     z_learning_rate: 0.01
+    z_prior_sigma: 2.0
   prob_unet_config:
     original_backbone: False # use original prob-unet backbone (overwrites above configuration of backbone)
     kl_factor: 1.0
@@ -32,9 +33,10 @@ model:
     latent_dim: 6
   conf_matrix_config:
     level: pixel # 'global', 'image', 'pixel'
-    min_trace: False
-    identity_reg: False
-    alpha: 0.4
+    min_trace: True # Switch if minimizing or maximizing trace of conf matrix
+    activate_min_trace_epoch: 5 # epoch of activating trace minimization, before maximize, -1 to deactivate
+    cmlayer_learning_rate: 0.0001
+    alpha: 0.7
 
 logging:
   interval: 10 # steps of train logging (in number of batches)
