@@ -227,7 +227,7 @@ class PiononoModel(nn.Module):
     def get_gold_predictions(self):
         if len(self.gold_annotators) == 1:
             annotator = torch.ones(self.unet_features.shape[0]).to(device) * self.gold_annotators[0]
-            mean, var = self.mc_sampling(annotator)
+            mean, std = self.mc_sampling(annotator)
         else:
             shape = [self.mc_samples * len(self.gold_annotators), self.unet_features.shape[0], self.num_classes,
                      self.unet_features.shape[-2], self.unet_features.shape[-1]]
@@ -237,8 +237,8 @@ class PiononoModel(nn.Module):
                     samples[(a*self.mc_samples)+i] = self.sample(use_z_mean=False,
                                                                  annotator_ids=torch.ones(self.unet_features.shape[0]).to(device) * self.gold_annotators[a])
             mean = torch.mean(samples, dim=0)
-            var = torch.var(samples, dim=0)
-        return mean, var
+            std = torch.std(samples, dim=0)
+        return mean, std
 
     def mc_sampling(self, annotator: torch.tensor = None):
         shape = [self.mc_samples, annotator.shape[0], self.num_classes, self.unet_features.shape[-2], self.unet_features.shape[-1]]
@@ -246,8 +246,8 @@ class PiononoModel(nn.Module):
         for i in range(self.mc_samples):
             samples[i] = self.sample(use_z_mean=False, annotator_ids=annotator)
         mean = torch.mean(samples, dim=0)
-        var = torch.var(samples, dim=0)
-        return mean, var
+        std = torch.std(samples, dim=0)
+        return mean, std
 
     def elbo(self, labels: torch.tensor, loss_fct, annotator: torch.tensor):
         """

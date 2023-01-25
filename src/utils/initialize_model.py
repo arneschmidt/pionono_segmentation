@@ -1,7 +1,7 @@
 import torch
 import utils.globals as globals
 from utils.model_supervised import SupervisedSegmentationModel
-from utils.model_confusionmatrix import ConfusionMatrixModel
+from utils.model_confusionmatrix_old import ConfusionMatrixModel
 from Probabilistic_Unet_Pytorch.probabilistic_unet import ProbabilisticUnet
 from utils.model_pionono import PiononoModel
 

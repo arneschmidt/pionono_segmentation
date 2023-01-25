@@ -59,5 +59,6 @@ def segmentation_scores(label_trues, label_preds, shortened):
     results['accuracy'] = accuracy_score(label_trues, label_preds)
     results['miou'] = jaccard_score(label_trues, label_preds, average="macro") # same as IoU!
     results['cohens_kappa'] = cohen_kappa_score(label_trues, label_preds, weights=None)
+    results['cohens_kappa_quad'] = cohen_kappa_score(label_trues, label_preds, weights='quadratic')
 
     return results

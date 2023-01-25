@@ -66,15 +66,15 @@ def save_test_image_variability(model, test_name, k, mode):
             a_dir = os.path.join(dir, a)
             os.makedirs(a_dir, exist_ok=True)
             if ('STAPLE' in annotators[i] or 'MV' in annotators[i]):
-                pred, var = model.get_gold_predictions()
+                pred, std = model.get_gold_predictions()
                 _, pred = torch.max(pred[:, 0:class_no], dim=1)
                 out_path = os.path.join(a_dir, 'pred_' + test_name[k].replace(".png", "_gold" + ".png"))
                 pred_k = convert_classes_to_rgb(pred[k].cpu().detach().numpy())
                 imageio.imsave(out_path, pred_k)
-                var = torch.mean(var[:, 0:class_no], dim=1)
-                out_path_var = os.path.join(a_dir, 'pred_' + test_name[k].replace(".png", "_gold_var" + ".png"))
-                var_k = convert_var_to_rgb(var[k].cpu().detach().numpy())
-                imageio.imsave(out_path_var, var_k)
+                std = torch.mean(std[:, 0:class_no], dim=1)
+                out_path_std = os.path.join(a_dir, 'pred_' + test_name[k].replace(".png", "_gold_var" + ".png"))
+                var_k = convert_std_to_rgb(std[k].cpu().detach().numpy())
+                imageio.imsave(out_path_std, var_k)
             else:
                 annotator = torch.ones(model.unet_features.shape[0]) * i
                 mean_pred = model.sample(use_z_mean=True, annotator_ids=annotator, annotator_list=annotators)
@@ -220,11 +220,11 @@ def convert_classes_to_rgb(seg_classes):
 
     return seg_rgb
 
-def convert_var_to_rgb(var):
-    h = var.shape[0]
-    w = var.shape[1]
+def convert_std_to_rgb(std):
+    h = std.shape[0]
+    w = std.shape[1]
     var_rgb = np.zeros((h, w, 3), dtype=np.uint8)
-    values = np.clip(255 - (var*1000), a_min=0, a_max=255).astype(int)
+    values = np.clip(255 - (std * 1000), a_min=0, a_max=255).astype(int)
     var_rgb[:, :, 0]= values
     var_rgb[:, :, 1]= values
     var_rgb[:, :, 2]= values

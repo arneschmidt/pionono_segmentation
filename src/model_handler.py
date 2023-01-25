@@ -146,8 +146,8 @@ class ModelHandler():
                     preds.append(test_pred_np.astype(np.int8).copy().flatten())
                     labels.append(test_label.astype(np.int8).copy().flatten())
 
-                    # We only want to execute the code below once for each image. We assume that STAPLE or MV is present.
-                    if 'STAPLE' in annotator_list[e] or 'MV' in annotator_list[e]:
+                    # We only want to execute the code below once for each image.
+                    if e == 0:
                         if self.epoch % int(config['logging']['artifact_interval']) == 0 or mode == 'test':
                             for k in range(len(test_name)):
                                 if test_name[k] in vis_images or vis_images == 'all':
