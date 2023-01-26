@@ -11,7 +11,6 @@ data:
   train:
     images: Crossval3/train
     masks:
-      - Maps/STAPLE
       - Maps/Maps1_T
       - Maps/Maps2_T
       - Maps/Maps3_T
@@ -38,6 +37,20 @@ data:
       - Maps/Maps4_T
       - Maps/Maps5_T
       - Maps/Maps6_T
+  repeat_train_images:
+    - 'slide001_core145.png'
+    - 'slide007_core005.png'
+    - 'slide007_core044.png'
+    - 'slide003_core068.png'
+    - 'slide007_core016.png'
+    - 'slide002_core073.png'
+    - 'slide002_core144.png'
+    - 'slide001_core010.png'
+    - 'slide002_core009.png'
+    - 'slide005_core092.png'
+    - 'slide002_core074.png'
+    - 'slide002_core140.png'
+  repeat_factor: 4
   visualize_images:
     train:
       - 'slide001_core005.png'
@@ -77,7 +90,7 @@ data:
   normalization: False
   augmentation:
     use_augmentation: True # switch everything off and on, if True automatically flips and 90 degree rotations are used in this case
-    gaussian_blur_kernel: 5 # range 3-7
+    gaussian_blur_kernel: 3 # range 3-7
     brightness_limit: 0.2
     contrast_limit: 0.2
     hue_shift_limit: 20

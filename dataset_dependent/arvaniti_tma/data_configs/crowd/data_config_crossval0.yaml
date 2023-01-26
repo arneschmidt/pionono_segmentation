@@ -1,0 +1,79 @@
+data:
+  dataset_name: arvaniti_tma_crowdsourcing
+  crowd: False
+  sr_experiment: False
+  class_no: 5
+  class_names: ['NC', 'GG3', 'GG4', 'GG5', 'other']
+  class_weights: [1., 1., 1., 1., 1.]
+  ignore_last_class: False # set True if last class will be ignored during training and testing
+  ignore_last_class_only_for_testing: True # set True if last class will be ignored during  testing
+  path: /home/arne/data/Arvaniti_TMA/resized_dataset_512/
+  train:
+    images: Crossval0/train
+    masks:
+      - Maps/Maps1_T
+      - Maps/Maps2_T
+  val:
+    images: Crossval0/val
+    masks:
+      - Maps/Maps1_T
+      - Maps/Maps2_T
+  test:
+    images: Crossval0/val
+    masks:
+      - Maps/Maps1_T
+      - Maps/Maps2_T
+  repeat_train_images:
+    - 'ZT80_38_A_8_3.png'
+    - 'ZT80_38_A_4_3.png'
+    - 'ZT80_38_B_7_7.png'
+    - 'ZT80_38_A_8_2.png'
+    - 'ZT80_38_C_1_10.png'
+    - 'ZT80_38_B_3_1.png'
+    - 'ZT80_38_B_2_1.png'
+    - 'ZT80_38_B_2_2.png'
+    - 'ZT80_38_B_2_12.png'
+    - 'ZT80_38_A_6_7.png'
+    - 'ZT80_38_C_5_8.png'
+    - 'ZT80_38_A_1_11.png'
+    - 'ZT80_38_C_2_1.png'
+    - 'ZT80_38_B_1_9.png'
+    - 'ZT80_38_C_4_1.png'
+    - 'ZT80_38_A_1_8.png'
+    - 'ZT80_38_A_1_7.png'
+  repeat_factor: 4
+  visualize_images:
+    train:
+      - 'ZT80_38_A_8_3.png'
+      - 'ZT80_38_A_4_3.png'
+      - 'ZT80_38_B_7_7.png'
+      - 'ZT80_38_A_8_2.png'
+      - 'ZT80_38_C_1_10.png'
+      - 'ZT80_38_B_3_1.png'
+      - 'ZT80_38_B_2_1.png'
+      - 'ZT80_38_B_2_2.png'
+    val:
+      - 'ZT80_38_B_1_2.png'
+      - 'ZT80_38_B_7_4.png'
+      - 'ZT80_38_A_7_1.png'
+      - 'ZT80_38_A_3_7.png'
+      - 'ZT80_38_C_7_10.png'
+      - 'ZT80_38_A_6_5.png'
+    test:
+      - 'ZT80_38_B_1_2.png'
+      - 'ZT80_38_B_7_4.png'
+      - 'ZT80_38_A_7_1.png'
+      - 'ZT80_38_A_3_7.png'
+      - 'ZT80_38_C_7_10.png'
+      - 'ZT80_38_A_6_5.png'
+  normalization: False
+  augmentation:
+    use_augmentation: True # switch everything off and on, if True automatically flips and 90 degree rotations are used in this case
+    gaussian_blur_kernel: 3 # range 3-7
+    brightness_limit: 0.2
+    contrast_limit: 0.2
+    hue_shift_limit: 20
+    sat_shift_limit: 30
+
+
+

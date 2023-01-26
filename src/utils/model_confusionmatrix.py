@@ -3,6 +3,8 @@ import utils.globals
 from utils.loss import noisy_label_loss
 from utils.segmentation_backbone import create_segmentation_backbone
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 def double_conv(in_channels, out_channels, step, norm):
     # ===========================================
@@ -90,31 +92,40 @@ class cm_layers(torch.nn.Module):
 
 
 class ConfusionMatrixModel(torch.nn.Module):
-    def __init__(self, noisy_labels):
+    def __init__(self, num_classes, num_annotators, level, image_res, learning_rate, alpha, min_trace):
         super().__init__()
-        config = utils.globals.config
-        self.seg_model = create_segmentation_backbone()
-        self.activation = torch.nn.Softmax(dim=1)
-        self.noisy_labels_no = len(noisy_labels)
-        print("Number of annotators (model): ", self.noisy_labels_no)
-        self.spatial_cms = torch.nn.ModuleList()
-        if config['model']['crowd_global']:
+        self.seg_model = create_segmentation_backbone().to(device)
+        self.num_annotators = num_annotators
+        self.num_classes = num_classes
+        self.level = level
+        self.image_res = image_res
+        self.learning_rate = learning_rate
+        self.alpha = alpha
+        self.min_trace = min_trace
+        print("Number of annotators (model): ", self.num_annotators)
+        self.cm_head = torch.nn.ModuleList()
+        if level == 'global':
             print("Global crowdsourcing")
-            for i in range(self.noisy_labels_no):
-                self.spatial_cms.append(
-                    gcm_layers(config['data']['class_no'], 512, 512))  # TODO: arrange inputwidht and height
+            for i in range(self.num_annotators):
+                self.cm_head.append(
+                    gcm_layers(num_classes, image_res, image_res))  # TODO: arrange inputwidht and height
         else:
-            for i in range(self.noisy_labels_no):
-                self.spatial_cms.append(cm_layers(in_channels=16, norm='in',
-                                                  class_no=config['data']['class_no']))  # TODO: arrange in_channels
+            for i in range(self.num_annotators):
+                self.cm_head.append(cm_layers(in_channels=16, norm='in',
+                                              class_no=num_classes))  # TODO: arrange in_channels
         self.activation = torch.nn.Softmax(dim=1)
 
+
     def forward(self, x):
-        cms = []
+        y = self.seg_model(x)
+        return y
+
+    def forward_with_cms(self, x):
         x = self.seg_model.encoder(x)
         x = self.seg_model.decoder(*x)
-        for i in range(self.noisy_labels_no):
-            cm = self.spatial_cms[i](x)  # BxCxCxWxH
+        cms = []
+        for i in range(self.num_annotators):
+            cm = self.cm_head[i](x)  # BxCxCxWxH
             #cm_ = cm[0, :, :, 0, 0]
             #print("CM! ", cm_ / cm_.sum(0, keepdim=True))
             cms.append(cm)
@@ -122,10 +133,50 @@ class ConfusionMatrixModel(torch.nn.Module):
         y = self.activation(x)
         return y, cms
 
+    def get_used_cms(self, cms, ann_ids):
+        cm_shape = cms[0].size()
+        used_cms = torch.zeros_like(cms[0])
+        for i in range(len(ann_ids)):
+            used_cms[i] = cms[int(ann_ids[i].long().to('cpu'))][i]
+        return used_cms
+
+    def get_noisy_pred(self, pred_gold, cm):
+        b, c, h, w = pred_gold.size()
+
+        # normalise the segmentation output tensor along dimension 1
+        pred_norm = pred_gold
+
+        # b x c x h x w ---> b*h*w x c x 1
+        pred_norm = pred_norm.view(b, c, h * w).permute(0, 2, 1).contiguous().view(b * h * w, c, 1)
+
+        # cm: learnt confusion matrix for each noisy label, b x c**2 x h x w
+        # label_noisy: noisy label, b x h x w
+
+        # b x c**2 x h x w ---> b*h*w x c x c
+        cm = cm.view(b, c ** 2, h * w).permute(0, 2, 1).contiguous().view(b * h * w, c * c).view(b * h * w, c, c)
+        cm = cm / cm.sum(1, keepdim=True)  # normalization
+        # matrix multiplication to calculate the predicted noisy segmentation:
+        # cm: b*h*w x c x c
+        # pred_noisy: b*h*w x c x 1
+        # print(cm.shape, pred_norm.shape)
+        pred_noisy = torch.bmm(cm, pred_norm).view(b * h * w, c)
+        pred_noisy = pred_noisy.view(b, h * w, c).permute(0, 2, 1).contiguous().view(b, c, h, w)
+
+        return pred_noisy, cm
+
     def train_step(self, images, labels, loss_fct, ann_ids):
-        y_pred, cms = self.forward(images)
-        cms_used = cms[ann_ids]
-        loss, loss_ce, loss_trace = noisy_label_loss(y_pred, cms, labels, loss_fct,
-                                                     self.min_trace,
-                                                     self.alpha)
+        y_pred, cms = self.forward_with_cms(images)
+        cms_used = self.get_used_cms(cms, ann_ids)
+        pred_noisy, cms_used = self.get_noisy_pred(y_pred, cms_used)
+        # log_likelihood_loss = loss_fct(pred_noisy, labels.view(b, h, w).long())
+        log_likelihood_loss = loss_fct(pred_noisy, labels)
+
+        b, c, h, w = y_pred.size()
+        regularisation = torch.trace(torch.transpose(torch.sum(cms_used, dim=0), 0, 1)).sum() / (b * h * w)
+        regularisation = self.alpha * regularisation
+
+        if self.min_trace:
+            loss = log_likelihood_loss + regularisation
+        else:
+            loss = log_likelihood_loss - regularisation
         return loss, y_pred

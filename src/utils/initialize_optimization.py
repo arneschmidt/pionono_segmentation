@@ -18,7 +18,7 @@ def init_optimization(model):
     elif config['model']['method'] == 'conf_matrix':
         opt_params = [
             {'params': model.seg_model.parameters()},
-            {'params': model.conf_mat_layers.parameters(), 'lr': config['model']['conf_matrix_config']['cmlayer_learning_rate']}
+            {'params': model.cm_head.parameters(), 'lr': config['model']['conf_matrix_config']['cmlayer_learning_rate']}
         ]
     else:
         opt_params = [{'params': model.parameters()}]

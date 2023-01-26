@@ -4,14 +4,13 @@ data:
   sr_experiment: False
   class_no: 5
   class_names: ['NC', 'GG3', 'GG4', 'GG5', 'other']
-  class_weights: [1., 1., 1., 1., 1.] #[ 2.69672952  1.13585435  0.78206914 25.60014031  0.41134248]
+  class_weights: [1., 1., 1., 1., 1.]
   ignore_last_class: False # set True if last class will be ignored during training and testing
   ignore_last_class_only_for_testing: True # set True if last class will be ignored during  testing
   path: /home/arne/data/Gleason_2019/resized_dataset_1024/
   train:
-    images: Crossval0/train
+    images: Crossval1/train
     masks:
-      - Maps/STAPLE
       - Maps/Maps1_T
       - Maps/Maps2_T
       - Maps/Maps3_T
@@ -19,7 +18,7 @@ data:
       - Maps/Maps5_T
       - Maps/Maps6_T
   val:
-    images: Crossval0/val
+    images: Crossval1/val
     masks:
       - Maps/STAPLE
       - Maps/Maps1_T
@@ -29,7 +28,7 @@ data:
       - Maps/Maps5_T
       - Maps/Maps6_T
   test:
-    images: Crossval0/val
+    images: Crossval1/val
     masks:
       - Maps/STAPLE
       - Maps/Maps1_T
@@ -38,11 +37,25 @@ data:
       - Maps/Maps4_T
       - Maps/Maps5_T
       - Maps/Maps6_T
+  repeat_train_images:
+    - 'slide001_core145.png'
+    - 'slide007_core005.png'
+    - 'slide007_core044.png'
+    - 'slide003_core068.png'
+    - 'slide002_core009.png'
+    - 'slide005_core092.png'
+    - 'slide002_core074.png'
+    - 'slide002_core140.png'
+    - 'slide002_core143.png'
+    - 'slide002_core010.png'
+    - 'slide003_core096.png'
+    - 'slide007_core043.png'
+  repeat_factor: 4
   visualize_images:
     train:
       - 'slide001_core005.png'
       - 'slide001_core011.png'
-      - 'slide002_core082.png'
+      - 'slide001_core146.png'
       - 'slide001_core156.png'
       - 'slide002_core033.png'
       - 'slide002_core050.png'
@@ -51,31 +64,33 @@ data:
       - 'slide005_core104.png'
       - 'slide007_core146.png'
     val:
-      - 'slide001_core145.png'
-      - 'slide007_core005.png'
-      - 'slide002_core082.png'
-      - 'slide001_core067.png'
-      - 'slide002_core123.png'
-      - 'slide003_core135.png'
-      - 'slide005_core063.png'
-      - 'slide005_core122.png'
+      - 'slide001_core003.png'
+      - 'slide001_core077.png'
+      - 'slide001_core160.png'
+      - 'slide002_core025.png'
+      - 'slide005_core051.png'
+      - 'slide005_core058.png'
       - 'slide005_core104.png'
-      - 'slide007_core057.png'
+      - 'slide006_core019.png'
+      - 'slide006_core047.png'
+      - 'slide007_core005.png'
+      - 'slide007_core149.png'
     test:
-      - 'slide001_core145.png'
-      - 'slide007_core005.png'
-      - 'slide002_core082.png'
-      - 'slide001_core067.png'
-      - 'slide002_core123.png'
-      - 'slide003_core135.png'
-      - 'slide005_core063.png'
-      - 'slide005_core122.png'
+      - 'slide001_core003.png'
+      - 'slide001_core077.png'
+      - 'slide001_core160.png'
+      - 'slide002_core025.png'
+      - 'slide005_core051.png'
+      - 'slide005_core058.png'
       - 'slide005_core104.png'
-      - 'slide007_core057.png'
+      - 'slide006_core019.png'
+      - 'slide006_core047.png'
+      - 'slide007_core005.png'
+      - 'slide007_core149.png'
   normalization: False
   augmentation:
     use_augmentation: True # switch everything off and on, if True automatically flips and 90 degree rotations are used in this case
-    gaussian_blur_kernel: 5 # range 3-7
+    gaussian_blur_kernel: 3 # range 3-7
     brightness_limit: 0.2
     contrast_limit: 0.2
     hue_shift_limit: 20

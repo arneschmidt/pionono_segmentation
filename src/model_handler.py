@@ -62,12 +62,12 @@ class ModelHandler():
                 _, labels = torch.max(labels, dim=1)
                 loss, y_pred = model.train_step(images, labels, loss_fct, ann_ids)
 
-                if config['model']['method'] != 'conf_matrix':
-                    if j % int(config['logging']['interval']) == 0:
-                        print("Iter {}/{} - batch loss : {:.4f}".format(j, len(trainloader), loss))
-                        self.log_training_metrics(y_pred, labels, loss, model, i * len(trainloader) * batch_s + j)
-                    self.store_train_imgs(imagename, images, labels, y_pred)
-                elif config['model']['method'] == 'conf_matrix' and i == config['model']['conf_matrix_config']['activate_min_trace_epoch']:  # 10 for cr_image_dice // 5 rest of the methods
+                if j % int(config['logging']['interval']) == 0:
+                    print("Iter {}/{} - batch loss : {:.4f}".format(j, len(trainloader), loss))
+                    self.log_training_metrics(y_pred, labels, loss, model, i * len(trainloader) * batch_s + j)
+                self.store_train_imgs(imagename, images, labels, y_pred)
+
+                if config['model']['method'] == 'conf_matrix' and i == config['model']['conf_matrix_config']['activate_min_trace_epoch']:  # 10 for cr_image_dice // 5 rest of the methods
                     optimizer = model.activate_min_trace()
 
                 # Backprop
@@ -80,7 +80,6 @@ class ModelHandler():
             if i % int(config['logging']['artifact_interval']) == 0:
                 val_results = self.evaluate(validate_data, mode='val')
                 log_results_list(val_results, mode='val', step=int((i + 1) * len(trainloader) * batch_s))
-                save_model_distributions(model)
                 save_grad_flow(model.named_parameters())
                 self.save_train_imgs()
 
@@ -117,6 +116,7 @@ class ModelHandler():
         model.eval()
         annotator_list = data[0]
         loader_list = data[1]
+        save_model_distributions(model)
 
         with torch.no_grad():
             results_list = []
@@ -134,8 +134,6 @@ class ModelHandler():
                     elif config['model']['method'] == 'prob_unet':
                         model.forward(test_img, None, training=False)
                         test_pred = model.sample(testing=True)
-                    elif config['model']['method'] == 'conf_matrix':
-                        test_pred = model(test_img)[0]
                     else:
                         test_pred = model(test_img)
                     _, test_pred = torch.max(test_pred[:, 0:class_no], dim=1)

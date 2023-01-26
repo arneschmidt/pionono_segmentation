@@ -23,10 +23,7 @@ def noisy_label_loss(pred, cms, labels, loss_fct, min_trace = False, alpha=0.1):
         regularisation (double): regularisation loss
     """
     b, c, h, w = pred.size()
-    if globals.config['data']['ignore_last_class']:
-        ignore_index = int(globals.config['data']['class_no'])  # deleted class is always set to the last index
-    else:
-        ignore_index = -100
+
     # normalise the segmentation output tensor along dimension 1
     pred_norm = pred
 

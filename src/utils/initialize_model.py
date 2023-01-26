@@ -1,7 +1,7 @@
 import torch
 import utils.globals as globals
 from utils.model_supervised import SupervisedSegmentationModel
-from utils.model_confusionmatrix_old import ConfusionMatrixModel
+from utils.model_confusionmatrix import ConfusionMatrixModel
 from Probabilistic_Unet_Pytorch.probabilistic_unet import ProbabilisticUnet
 from utils.model_pionono import PiononoModel
 
@@ -27,10 +27,11 @@ def init_model(annotators):
                              kl_factor=config['model']['pionono_config']['kl_factor'],
                              reg_factor=config['model']['pionono_config']['reg_factor'],
                              mc_samples=config['model']['pionono_config']['mc_samples'],
-                             z_prior_sigma=config['model']['pionono_config']['z_prior_sigma']
+                             z_prior_sigma=config['model']['pionono_config']['z_prior_sigma'],
+                             z_posterior_init_sigma=config['model']['pionono_config']['z_posterior_init_sigma'],
                              )
     elif config['model']['method'] == 'conf_matrix':
-        model = ConfusionMatrixModel(num_classes=config['data']['class_no'], annotators=annotators,
+        model = ConfusionMatrixModel(num_classes=config['data']['class_no'], num_annotators=len(annotators),
                                      level=config['model']['conf_matrix_config']['level'],
                                      image_res=config['data']['image_resolution'],
                                      learning_rate=config['model']['learning_rate'],
