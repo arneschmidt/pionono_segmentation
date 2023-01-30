@@ -273,8 +273,7 @@ def get_data():
                                    [val_masks[a]],
                                    preprocessing=preprocessing,
                                    annotator_ids=[a])
-        validateloaders.append(data.DataLoader(validate_dataset, batch_size=batch_size, shuffle=False,
-                                               num_workers=batch_size, drop_last=False))
+        validateloaders.append(data.DataLoader(validate_dataset, batch_size=1, shuffle=False, num_workers=8, drop_last=False))
     validate_data = (val_masks, validateloaders)
 
     # test: create separate loaders for each annotator
@@ -286,8 +285,7 @@ def get_data():
                                [test_masks[a]],
                                preprocessing=preprocessing,
                                annotator_ids=[a])
-        testloaders.append(data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=batch_size,
-                                           drop_last=False))
+        testloaders.append(data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=8, drop_last=False))
     test_data = (test_masks, testloaders)
 
     return trainloader, validate_data, test_data, annotators
