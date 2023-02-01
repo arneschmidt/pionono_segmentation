@@ -40,4 +40,7 @@ def init_model(annotators):
     else:
         model = SupervisedSegmentationModel()
 
+    if config['model']['load_model'] != 'None':
+        model.load_state_dict(torch.load(config['model']['load_model']))
+
     return model

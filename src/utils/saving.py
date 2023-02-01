@@ -22,8 +22,8 @@ def save_model(model):
     model_dir = 'models'
     dir = os.path.join(globals.config['logging']['experiment_folder'], model_dir)
     os.makedirs(dir, exist_ok=True)
-    out_path = os.path.join(dir, 'best_model.pth')
-    torch.save(model, out_path)
+    out_path = os.path.join(dir, 'model_state_dict.pth')
+    torch.save(model.state_dict(), out_path)
     print('Best Model saved!')
 
 

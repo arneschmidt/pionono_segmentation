@@ -21,9 +21,6 @@ from utils.mlflow_logger import start_logging
 
 def main():
     print(os.curdir)
-    #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-    #os.environ["CUDA_VISIBLE_DEVICES"] = str(3)
-    #os.environ['CUDA_LAUNCH_BLOCKING'] = str(1)
 
     start_logging()
 
