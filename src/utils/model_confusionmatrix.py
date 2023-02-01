@@ -61,13 +61,13 @@ class gcm_layers(torch.nn.Module):
         self.input_height = input_height
         self.input_width = input_width
         self.global_weights = torch.nn.Parameter(torch.eye(class_no))
-        self.relu = torch.nn.ReLU()
+        self.softplus = torch.nn.Softplus()
 
     def forward(self, x):
         all_weights = self.global_weights.unsqueeze(0).repeat(x.size(0), 1, 1)
         all_weights = all_weights.unsqueeze(3).unsqueeze(4).repeat(1, 1, 1, self.input_height, self.input_width)
-        # y = self.relu(all_weights)
-        y = all_weights
+        y = self.softplus(all_weights)
+        # y = all_weights
 
         return y
 
@@ -83,10 +83,10 @@ class cm_layers(torch.nn.Module):
         self.conv_1 = double_conv(in_channels=in_channels, out_channels=in_channels, norm=norm, step=1)
         self.conv_2 = double_conv(in_channels=in_channels, out_channels=in_channels, norm=norm, step=1)
         self.conv_last = torch.nn.Conv2d(in_channels, class_no ** 2, 1, bias=True)
-        self.relu = torch.nn.Softplus()
+        self.softplus = torch.nn.Softplus()
 
     def forward(self, x):
-        y = self.relu(self.conv_last(self.conv_2(self.conv_1(x))))
+        y = self.softplus(self.conv_last(self.conv_2(self.conv_1(x)))) # matrix has to be normalized per row!
 
         return y
 
@@ -174,7 +174,7 @@ class ConfusionMatrixModel(torch.nn.Module):
         b, c, h, w = y_pred.size()
         regularisation = torch.trace(torch.transpose(torch.sum(cms_used, dim=0), 0, 1)).sum() / (b * h * w)
         regularisation = self.alpha * regularisation
-
+        # print(cms_used)
         if self.min_trace:
             loss = log_likelihood_loss + regularisation
         else:
