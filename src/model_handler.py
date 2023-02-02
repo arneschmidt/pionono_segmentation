@@ -103,14 +103,7 @@ class ModelHandler():
         class_no = config['data']['class_no']
         vis_images = config['data']['visualize_images'][mode]
 
-        if mode=='test':
-            print("Testing the best model")
-            model_dir = 'models'
-            dir = os.path.join(globals.config['logging']['experiment_folder'], model_dir)
-            model_path = os.path.join(dir, 'best_model.pth')
-            model = torch.load(model_path)
-        else:
-            model = self.model
+        model = self.model
 
         device = self.device
         model.eval()
@@ -133,7 +126,7 @@ class ModelHandler():
                             test_pred = model.sample(use_z_mean=True, annotator_ids=ann_id, annotator_list=annotator_list)
                     elif config['model']['method'] == 'prob_unet':
                         model.forward(test_img, None, training=False)
-                        test_pred = model.sample(testing=True)
+                        test_pred = model.get_gold_predictions()
                     else:
                         test_pred = model(test_img)
                     _, test_pred = torch.max(test_pred[:, 0:class_no], dim=1)

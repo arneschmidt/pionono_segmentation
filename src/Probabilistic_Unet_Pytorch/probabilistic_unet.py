@@ -150,6 +150,7 @@ class Fcomb(nn.Module):
             else:
                 self.layers.apply(init_weights)
                 self.last_layer.apply(init_weights)
+        self.activation = torch.nn.Softmax(dim=1)
 
     def tile(self, a, dim, n_tile):
         """
@@ -163,7 +164,7 @@ class Fcomb(nn.Module):
         order_index = torch.LongTensor(np.concatenate([init_dim * np.arange(n_tile) + i for i in range(init_dim)])).to(device)
         return torch.index_select(a, dim, order_index)
 
-    def forward(self, feature_map, z):
+    def forward(self, feature_map, z, use_softmax=True):
         """
         Z is batch_sizexlatent_dim and feature_map is batch_sizexno_channelsxHxW.
         So broadcast Z to batch_sizexlatent_dimxHxW. Behavior is exactly the same as tf.tile (verified)
@@ -177,8 +178,10 @@ class Fcomb(nn.Module):
             #Concatenate the feature map (output of the UNet) and the sample taken from the latent space
             feature_map = torch.cat((feature_map, z), dim=self.channel_axis)
             output = self.layers(feature_map)
-            return self.last_layer(output)
-
+            output = self.last_layer(output)
+            if use_softmax:
+                output = self.activation(output)
+            return output
 
 
 class ProbabilisticUnet(nn.Module):
@@ -225,7 +228,7 @@ class ProbabilisticUnet(nn.Module):
         else:
             self.unet_features = self.unet.forward(patch)
 
-    def sample(self, testing=False):
+    def sample(self, testing=False, use_softmax=True):
         """
         Sample a segmentation by reconstructing from a prior sample
         and combining this with UNet features
@@ -238,8 +241,17 @@ class ProbabilisticUnet(nn.Module):
             z_prior = self.prior_latent_space.base_dist.loc
             # z_prior = self.prior_latent_space.sample()
             self.z_prior_sample = z_prior
-        return self.fcomb.forward(self.unet_features, z_prior)
+        return self.fcomb.forward(self.unet_features, z_prior, use_softmax)
 
+    def get_gold_predictions(self):
+        shape = [self.mc_samples, self.unet_features.shape[0], self.num_classes,
+                 self.unet_features.shape[-2], self.unet_features.shape[-1]]
+        samples = torch.zeros(shape).to(device)
+        for i in range(10):
+            samples[i] = self.sample(use_softmax=True)
+        mean = torch.mean(samples, dim=0)
+
+        return mean
 
     def reconstruct(self, use_posterior_mean=False, calculate_posterior=False, z_posterior=None):
         """
@@ -252,7 +264,7 @@ class ProbabilisticUnet(nn.Module):
         else:
             if calculate_posterior:
                 z_posterior = self.posterior_latent_space.rsample()
-        return self.fcomb.forward(self.unet_features, z_posterior)
+        return self.fcomb.forward(self.unet_features, z_posterior, use_softmax=False)
 
     def kl_divergence(self, analytic=True, calculate_posterior=False, z_posterior=None):
         """
@@ -298,6 +310,7 @@ class ProbabilisticUnet(nn.Module):
         return loss
 
     def train_step(self, images, labels, loss_fct, ann_ids=None):
+        # for training don't use softmax because it is integrated in loss function
         self.forward(images, labels, training=True)
         loss = self.combined_loss(labels, loss_fct)
         y_pred = self.reconstruction

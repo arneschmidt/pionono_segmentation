@@ -140,7 +140,7 @@ class PiononoHead(nn.Module):
             np.concatenate([init_dim * np.arange(n_tile) + i for i in range(init_dim)])).to(device)
         return torch.index_select(a, dim, order_index)
 
-    def forward(self, feature_map, z):
+    def forward(self, feature_map, z, use_softmax=True):
         """
         Z is batch_sizexlatent_dim and feature_map is batch_sizexno_channelsxHxW.
         So broadcast Z to batch_sizexlatent_dimxHxW. Behavior is exactly the same as tf.tile (verified)
@@ -154,8 +154,9 @@ class PiononoHead(nn.Module):
             # Concatenate the feature map (output of the UNet) and the sample taken from the latent space
             feature_map = torch.cat((feature_map, z), dim=self.channel_axis)
             x = self.layers(feature_map)
-            x = self.last_layer(x)
-            y = self.activation(x)
+            y = self.last_layer(x)
+            if use_softmax:
+                y = self.activation(y)
             return y
 
 class PiononoModel(nn.Module):
@@ -208,7 +209,7 @@ class PiononoModel(nn.Module):
             new_ids[a] = torch.nonzero(torch.tensor(annotator_list[int(annotator_ids[a])] == np.array(self.annotators)))[0][0]
         return new_ids
 
-    def sample(self, use_z_mean: bool, annotator_ids: torch.tensor, annotator_list: list = None):
+    def sample(self, use_z_mean: bool, annotator_ids: torch.tensor, annotator_list: list = None, use_softmax=True):
         """
         Sample a segmentation by reconstructing from a prior sample
         and combining this with UNet features
@@ -220,31 +221,33 @@ class PiononoModel(nn.Module):
             z = self.z.forward(annotator_ids, sample=True)
         else:
             z = self.z.forward(annotator_ids, sample=False)
-        pred = self.head.forward(self.unet_features, z)
+        pred = self.head.forward(self.unet_features, z, use_softmax)
 
         return pred
 
     def get_gold_predictions(self):
         if len(self.gold_annotators) == 1:
             annotator = torch.ones(self.unet_features.shape[0]).to(device) * self.gold_annotators[0]
-            mean, std = self.mc_sampling(annotator)
+            mean, std = self.mc_sampling(annotator, use_softmax=True)
         else:
             shape = [self.mc_samples * len(self.gold_annotators), self.unet_features.shape[0], self.num_classes,
                      self.unet_features.shape[-2], self.unet_features.shape[-1]]
             samples = torch.zeros(shape).to(device)
             for a in range(len(self.gold_annotators)):
                 for i in range(self.mc_samples):
+                    annotator_ids = torch.ones(self.unet_features.shape[0]).to(device) * self.gold_annotators[a]
                     samples[(a*self.mc_samples)+i] = self.sample(use_z_mean=False,
-                                                                 annotator_ids=torch.ones(self.unet_features.shape[0]).to(device) * self.gold_annotators[a])
+                                                                 annotator_ids=annotator_ids,
+                                                                 use_softmax=True)
             mean = torch.mean(samples, dim=0)
             std = torch.std(samples, dim=0)
         return mean, std
 
-    def mc_sampling(self, annotator: torch.tensor = None):
+    def mc_sampling(self, annotator: torch.tensor = None, use_softmax=True):
         shape = [self.mc_samples, annotator.shape[0], self.num_classes, self.unet_features.shape[-2], self.unet_features.shape[-1]]
         samples = torch.zeros(shape).to(device)
         for i in range(self.mc_samples):
-            samples[i] = self.sample(use_z_mean=False, annotator_ids=annotator)
+            samples[i] = self.sample(use_z_mean=False, annotator_ids=annotator, use_softmax=use_softmax)
         mean = torch.mean(samples, dim=0)
         std = torch.std(samples, dim=0)
         return mean, std
@@ -254,7 +257,7 @@ class PiononoModel(nn.Module):
         Calculate the evidence lower bound of the log-likelihood of P(Y|X)
         """
         # self.preds = self.sample(use_z_mean=False, annotator=annotator)
-        self.preds, _ = self.mc_sampling(annotator=annotator)
+        self.preds, _ = self.mc_sampling(annotator=annotator, use_softmax=False)
         self.log_likelihood_loss = loss_fct(self.preds, labels)
         self.kl_loss = self.z.get_kl_loss(annotator) * self.kl_factor
 

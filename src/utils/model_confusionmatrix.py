@@ -116,11 +116,13 @@ class ConfusionMatrixModel(torch.nn.Module):
         self.activation = torch.nn.Softmax(dim=1)
 
 
-    def forward(self, x):
+    def forward(self, x, use_softmax=True):
         y = self.seg_model(x)
+        if use_softmax:
+            y = self.activation(y)
         return y
 
-    def forward_with_cms(self, x):
+    def forward_with_cms(self, x, use_softmax=True):
         x = self.seg_model.encoder(x)
         x = self.seg_model.decoder(*x)
         cms = []
@@ -129,8 +131,9 @@ class ConfusionMatrixModel(torch.nn.Module):
             #cm_ = cm[0, :, :, 0, 0]
             #print("CM! ", cm_ / cm_.sum(0, keepdim=True))
             cms.append(cm)
-        x = self.seg_model.segmentation_head(x)
-        y = self.activation(x)
+        y = self.seg_model.segmentation_head(x)
+        if use_softmax:
+            y = self.activation(y)
         return y, cms
 
     def get_used_cms(self, cms, ann_ids):
@@ -165,7 +168,8 @@ class ConfusionMatrixModel(torch.nn.Module):
         return pred_noisy, cm
 
     def train_step(self, images, labels, loss_fct, ann_ids):
-        y_pred, cms = self.forward_with_cms(images)
+        # for training don't use softmax because it is integrated in loss function
+        y_pred, cms = self.forward_with_cms(images, use_softmax=False)
         cms_used = self.get_used_cms(cms, ann_ids)
         pred_noisy, cms_used = self.get_noisy_pred(y_pred, cms_used)
         # log_likelihood_loss = loss_fct(pred_noisy, labels.view(b, h, w).long())

@@ -37,16 +37,12 @@ def init_optimization(model):
 
     loss_mode = config['model']['loss']
     if loss_mode == 'ce':
-        nlloss = torch.nn.NLLLoss(reduction='mean', ignore_index=ignore_index, weight=class_weights)
-        def ce_with_softmax(preds, labels):
-            return nlloss(torch.log(preds+1e-7), labels)
-
-        loss_fct = ce_with_softmax
+        loss_fct = torch.nn.CrossEntropyLoss(weight=class_weights, ignore_index=ignore_index)
     elif loss_mode == 'dice':
         # loss_fct = DiceLoss(ignore_index=ignore_index, mode='multiclass', from_logits=False)
-        loss_fct = DiceLoss(weight=class_weights, normalization='none')
+        loss_fct = DiceLoss(weight=class_weights, normalization='softmax')
     elif loss_mode == 'gdice':
-        loss_fct = GeneralizedDiceLoss(normalization='none')
+        loss_fct = GeneralizedDiceLoss(normalization='softmax')
     elif loss_mode == 'focal':
         loss_fct = FocalLoss(reduction='mean', ignore_index=ignore_index, mode='multiclass')
     else:

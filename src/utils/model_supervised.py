@@ -7,7 +7,7 @@ class SupervisedSegmentationModel(torch.nn.Module):
         self.seg_model = create_segmentation_backbone()
         self.activation = torch.nn.Softmax(dim=1)
 
-    def forward(self, x):
+    def forward(self, x, use_softmax=False):
         x = self.seg_model(x)
         y = self.activation(x)
         return y
