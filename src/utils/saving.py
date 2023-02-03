@@ -19,12 +19,10 @@ import matplotlib.colors as mcolors
 CLASS_COLORS_BGR = [[128, 255, 96], [32, 224, 255], [0, 104, 255], [0, 0, 255], [255, 255, 255]]
 
 def save_model(model):
-    model_dir = 'models'
-    dir = os.path.join(globals.config['logging']['experiment_folder'], model_dir)
-    os.makedirs(dir, exist_ok=True)
-    out_path = os.path.join(dir, 'model_state_dict.pth')
-    torch.save(model.state_dict(), out_path)
-    print('Best Model saved!')
+    dir = globals.config['logging']['experiment_folder']
+    out_path = os.path.join(dir, 'model.pth')
+    torch.save(model, out_path)
+    print('Model saved to: ' + out_path)
 
 
 def save_test_images(test_imgs:torch.Tensor, test_preds: np.array, test_labels: np.array, test_name: np.array, mode: str):

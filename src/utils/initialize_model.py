@@ -41,6 +41,11 @@ def init_model(annotators):
         model = SupervisedSegmentationModel()
 
     if config['model']['load_model'] != 'None':
-        model.load_state_dict(torch.load(config['model']['load_model']))
+        print('Load model from ' + config['model']['load_model'])
+        loaded_model = torch.load(config['model']['load_model'])
+        if config['model']['load_only_state_dict']:
+            model.load_state_dict(loaded_model.state_dict())
+        else:
+            model = loaded_model
 
     return model

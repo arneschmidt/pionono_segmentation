@@ -1,43 +1,44 @@
 model:
   seed: 0
-  batch_size: 2
+  load_model: ../../experiments/arvaniti_tma/experiments/initial_experiments/pio_enetb0/model.pth # ../../experiments/gleason19/experiments/cross_validation/pionono/cval0/models/model_state_dict.pth
+  load_only_state_dict: False
+  batch_size: 3
   optimizer: adam # sgd_mom, adam
-  epochs: 100
-  loss: gdice # ce, dice, gdice, focal
+  epochs: 0
+  loss: dice # ce, dice, gdice, focal
   learning_rate: 0.0001
   lr_decay_after_epoch: 40
   lr_decay_param: 0.1
   backbone: unet # unet, unetpp, deeplabv3p, pspnet, linknet
   encoder:
-    backbone: resnet34 # densenet121, resnet34, efficientnet-b0, efficientnet-b1, ..
+    backbone: efficientnet-b0 # densenet121, resnet34, efficientnet-b0, efficientnet-b1, ..
     weights: imagenet # imagenet or None
   decoder:
     activation: softmax # softmax or None
   method: pionono # supervised, prob_unet, conf_matrix, pionono
   pionono_config:
     mc_samples: 5
-    no_head_layers: 4
-    head_kernelsize: 1
-    head_dilation: 3
+    no_head_layers: 3
+    head_learning_rate: 0.0001
     kl_factor: 0.001
     reg_factor: 0.00001
-    latent_dim: 6
+    latent_dim: 8
     gold_annotators:
       - 0
-    z_learning_rate: 0.01
+    z_learning_rate: 0.02
     z_prior_sigma: 2.0
-    z_posterior_init_sigma: 4.0
+    z_posterior_init_sigma: 8.0
   prob_unet_config:
     original_backbone: False # use original prob-unet backbone (overwrites above configuration of backbone)
     kl_factor: 1.0
     reg_factor: 0.00001
     latent_dim: 6
   conf_matrix_config:
-    level: pixel # 'global', 'pixel'
+    level: global # 'global', 'pixel'
     min_trace: False # Switch if minimizing or maximizing trace of conf matrix
-    activate_min_trace_epoch: 5 # epoch of activating trace minimization, before maximize, -1 to deactivate
-    cmlayer_learning_rate: 0.0001
-    alpha: 0.7
+    activate_min_trace_epoch: -1 # epoch of activating trace minimization, before maximize, -1 to deactivate
+    cmlayer_learning_rate: 0.01
+    alpha: 1.0
 
 logging:
   interval: 10 # steps of train logging (in number of batches)
