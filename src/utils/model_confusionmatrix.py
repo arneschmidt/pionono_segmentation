@@ -184,3 +184,13 @@ class ConfusionMatrixModel(torch.nn.Module):
         else:
             loss = log_likelihood_loss - regularisation
         return loss, y_pred
+
+    def activate_min_trace(self):
+        print("Minimize trace activated!")
+        self.min_trace = True
+        print("Alpha updated", self.alpha)
+        optimizer = torch.optim.Adam([
+            {'params': self.seg_model.parameters()},
+            {'params': self.conf_mat_layers.parameters(), 'lr': 1e-4}
+        ], lr=self.learning_rate)
+        return optimizer
