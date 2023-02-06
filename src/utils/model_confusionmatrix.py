@@ -191,6 +191,6 @@ class ConfusionMatrixModel(torch.nn.Module):
         print("Alpha updated", self.alpha)
         optimizer = torch.optim.Adam([
             {'params': self.seg_model.parameters()},
-            {'params': self.conf_mat_layers.parameters(), 'lr': 1e-4}
+            {'params': self.cm_head.parameters(), 'lr': 1e-4}
         ], lr=self.learning_rate)
         return optimizer
