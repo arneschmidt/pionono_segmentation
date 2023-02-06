@@ -206,6 +206,7 @@ class ProbabilisticUnet(nn.Module):
         self.beta = beta
         self.reg_factor = reg_factor
         self.z_prior_sample = 0
+        self.mc_samples = 20
         self.original_backbone = original_backbone
         if self.original_backbone:
             self.unet = Unet(self.input_channels, self.num_classes, self.num_filters, self.initializers, apply_last_layer=False, padding=True).to(device)
