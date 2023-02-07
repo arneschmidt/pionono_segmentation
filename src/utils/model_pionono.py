@@ -183,7 +183,8 @@ class PiononoModel(nn.Module):
         self.head_dilation = head_dilation
         self.kl_factor = kl_factor
         self.reg_factor = reg_factor
-        self.mc_samples = mc_samples
+        self.train_mc_samples = mc_samples
+        self.test_mc_samples = 20
         self.unet = UnetHeadless().to(device)
         self.z = LatentVariable(len(annotators), latent_dim, prior_mu_value=z_prior_mu, prior_sigma_value=z_prior_sigma,
                                 z_posterior_init_sigma=z_posterior_init_sigma).to(device)
@@ -230,23 +231,27 @@ class PiononoModel(nn.Module):
             annotator = torch.ones(self.unet_features.shape[0]).to(device) * self.gold_annotators[0]
             mean, std = self.mc_sampling(annotator, use_softmax=True)
         else:
-            shape = [self.mc_samples * len(self.gold_annotators), self.unet_features.shape[0], self.num_classes,
+            shape = [self.train_mc_samples * len(self.gold_annotators), self.unet_features.shape[0], self.num_classes,
                      self.unet_features.shape[-2], self.unet_features.shape[-1]]
             samples = torch.zeros(shape).to(device)
             for a in range(len(self.gold_annotators)):
-                for i in range(self.mc_samples):
+                for i in range(self.train_mc_samples):
                     annotator_ids = torch.ones(self.unet_features.shape[0]).to(device) * self.gold_annotators[a]
-                    samples[(a*self.mc_samples)+i] = self.sample(use_z_mean=False,
-                                                                 annotator_ids=annotator_ids,
-                                                                 use_softmax=True)
+                    samples[(a * self.train_mc_samples) + i] = self.sample(use_z_mean=False,
+                                                                           annotator_ids=annotator_ids,
+                                                                           use_softmax=True)
             mean = torch.mean(samples, dim=0)
             std = torch.std(samples, dim=0)
         return mean, std
 
     def mc_sampling(self, annotator: torch.tensor = None, use_softmax=True):
-        shape = [self.mc_samples, annotator.shape[0], self.num_classes, self.unet_features.shape[-2], self.unet_features.shape[-1]]
+        if self.training:
+            mc_samples = self.train_mc_samples
+        else:
+            mc_samples = self.test_mc_samples
+        shape = [mc_samples, annotator.shape[0], self.num_classes, self.unet_features.shape[-2], self.unet_features.shape[-1]]
         samples = torch.zeros(shape).to(device)
-        for i in range(self.mc_samples):
+        for i in range(mc_samples):
             samples[i] = self.sample(use_z_mean=False, annotator_ids=annotator, use_softmax=use_softmax)
         mean = torch.mean(samples, dim=0)
         std = torch.std(samples, dim=0)
