@@ -12,7 +12,7 @@ def init_optimization(model):
     if config['model']['method'] == 'pionono':
         opt_params = [
             {'params': model.unet.parameters()},
-            {'params': model.head.parameters(), 'lr': config['model']['pionono_config']['head_learning_rate']},
+            {'params': model.head.parameters()},
             {'params': model.z.parameters(), 'lr': config['model']['pionono_config']['z_learning_rate']}
         ]
     elif config['model']['method'] == 'conf_matrix':

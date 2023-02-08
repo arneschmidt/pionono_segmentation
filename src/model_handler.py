@@ -120,7 +120,7 @@ class ModelHandler():
                     test_img = test_img.to(device=device, dtype=torch.float32)
                     if config['model']['method'] == 'pionono':
                         model.forward(test_img)
-                        if 'STAPLE' in annotator_list[e] or 'MV' in annotator_list[e]:
+                        if 'STAPLE' in annotator_list[e] or 'MV' in annotator_list[e] or config['model']['pionono_config']['always_goldpred']:
                             test_pred, _ = model.get_gold_predictions()
                         else:
                             test_pred = model.sample(use_z_mean=True, annotator_ids=ann_id, annotator_list=annotator_list)
