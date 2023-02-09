@@ -27,6 +27,9 @@ def start_logging():
     mlflow.set_tags(config['logging']['tags'])
     mlflow.log_artifact('config.yaml')
 
+def log_artifact_folder():
+    mlflow.log_artifacts(globals.config['logging']['experiment_folder'])
+
 def log_results(results, mode, step=None):
 
     formatted_results = {}

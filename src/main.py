@@ -9,6 +9,7 @@
 
 import os
 import argparse
+import traceback
 
 import torch
 
@@ -16,21 +17,29 @@ from data import get_data
 from utils.globals import init_global_config
 import utils.globals
 from model_handler import ModelHandler
-from utils.mlflow_logger import start_logging
+from utils.mlflow_logger import start_logging, log_artifact_folder
 
 
 def main():
     print(os.curdir)
 
     start_logging()
+    try:
+        # load data
+        trainloader, validate_data, test_data, annotators = get_data()
 
-    # load data
-    trainloader, validate_data, test_data, annotators = get_data()
-
-    # load and train the model
-    model_handler = ModelHandler(annotators)
-    model_handler.train(trainloader, validate_data)
-    model_handler.test(test_data)
+        # load and train the model
+        model_handler = ModelHandler(annotators)
+        model_handler.train(trainloader, validate_data)
+        model_handler.test(test_data)
+    except Exception as e:  # catch the error message to log it to mlflow
+        f = open(os.path.join(config['logging']['experiment_folder'], 'error_message.txt'), "a")
+        f.write(str(e))
+        f.write(traceback.format_exc())
+        f.close()
+        print(e)
+        print(traceback.format_exc())
+        log_artifact_folder()
 
 
 if __name__ == "__main__":

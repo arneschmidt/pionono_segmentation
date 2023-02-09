@@ -1,0 +1,19 @@
+data:
+  train:
+    images: Crossval0/train
+    masks:
+      - Maps/Maps1_T
+      - Maps/Maps2_T
+      - Maps/Maps3_T
+      - Maps/Maps4_T
+      - Maps/Maps5_T
+      - Maps/Maps6_T
+
+model:
+  seed: 2
+  pionono_config:
+    gold_annotators:
+      - 2
+      - 3
+      - 4
+      - 5

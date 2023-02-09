@@ -8,7 +8,8 @@ import utils.globals as globals
 from utils.saving import save_model, save_results, save_test_images, save_image_color_legend, save_crowd_images, \
     save_grad_flow, save_test_image_variability, save_model_distributions
 from utils.test_helpers import segmentation_scores
-from utils.mlflow_logger import log_results, log_results_list, probabilistic_model_logging, set_epoch_output_dir, set_test_output_dir
+from utils.mlflow_logger import log_results, log_results_list, probabilistic_model_logging, set_epoch_output_dir,\
+    set_test_output_dir, log_artifact_folder
 from utils.initialize_optimization import init_optimization
 from utils.initialize_model import init_model
 
@@ -83,8 +84,6 @@ class ModelHandler():
                 save_grad_flow(model.named_parameters())
                 self.save_train_imgs()
 
-            mlflow.log_artifacts(globals.config['logging']['experiment_folder'])
-
             # LR decay
             if i > config['model']['lr_decay_after_epoch']:
                 for g in optimizer.param_groups:
@@ -96,7 +95,8 @@ class ModelHandler():
         save_image_color_legend()
         results = self.evaluate(test_data)
         log_results_list(results, mode='test', step=None)
-        mlflow.log_artifacts(globals.config['logging']['experiment_folder'])
+        log_artifact_folder()
+
 
     def evaluate(self, data, mode='test'):
         config = globals.config
@@ -157,6 +157,7 @@ class ModelHandler():
                 print('RESULTS for ' + mode + ' Annotator: ' + str(annotator_list[e]))
                 print(results)
                 results_list.append(results)
+        log_artifact_folder()
         return results_list
 
     def get_results(self, pred, label, shortened=False):
