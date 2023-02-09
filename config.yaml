@@ -1,6 +1,6 @@
 model:
   seed: 0
-  load_model: ../../experiments/arvaniti_tma/experiments/initial_experiments/pio_enetb0/model.pth # ../../experiments/gleason19/experiments/cross_validation/pionono/cval0/models/model_state_dict.pth
+  load_model: ../../experiments/gleason19/experiments/cross_validation/sup_staple/cval0/model.pth #../../experiments/arvaniti_tma/experiments/initial_experiments/pio_enetb0/model.pth
   load_only_state_dict: False
   batch_size: 3
   optimizer: adam # sgd_mom, adam
@@ -11,20 +11,20 @@ model:
   lr_decay_param: 0.1
   backbone: unet # unet, unetpp, deeplabv3p, pspnet, linknet
   encoder:
-    backbone: efficientnet-b0 # densenet121, resnet34, efficientnet-b0, efficientnet-b1, ..
+    backbone: efficientnet-b2 # densenet121, resnet34, efficientnet-b0, efficientnet-b1, ..
     weights: imagenet # imagenet or None
   decoder:
     activation: softmax # softmax or None
-  method: pionono # supervised, prob_unet, conf_matrix, pionono
+  method: supervised # supervised, prob_unet, conf_matrix, pionono
   pionono_config:
     mc_samples: 5
     no_head_layers: 3
-    head_learning_rate: 0.0001
     kl_factor: 0.001
     reg_factor: 0.00001
     latent_dim: 8
     gold_annotators:
       - 0
+    always_goldpred: True
     z_learning_rate: 0.02
     z_prior_sigma: 2.0
     z_posterior_init_sigma: 8.0
@@ -36,7 +36,7 @@ model:
   conf_matrix_config:
     level: global # 'global', 'pixel'
     min_trace: False # Switch if minimizing or maximizing trace of conf matrix
-    activate_min_trace_epoch: -1 # epoch of activating trace minimization, before maximize, -1 to deactivate
+    activate_min_trace_epoch: 1 # epoch of activating trace minimization, before maximize, -1 to deactivate
     cmlayer_learning_rate: 0.01
     alpha: 1.0
 

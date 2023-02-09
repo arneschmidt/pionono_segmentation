@@ -1,0 +1,90 @@
+data:
+  dataset_name: gleason19_crowdsourcing
+  image_resolution: 1024
+  crowd: True
+  class_no: 5
+  class_names: ['NC', 'GG3', 'GG4', 'GG5', 'other']
+  class_weights: [1., 1., 1., 1., 1.]
+  ignore_last_class: False # set True if last class will be ignored during training and testing
+  ignore_last_class_only_for_testing: True # set True if last class will be ignored during  testing
+  path: /home/arne/data/Gleason_2019/resized_dataset_1024/
+  train:
+    images: Crossval2/train
+    masks:
+      - Maps/Maps1_T
+      - Maps/Maps2_T
+      - Maps/Maps3_T
+      - Maps/Maps4_T
+      - Maps/Maps5_T
+      - Maps/Maps6_T
+  val:
+    images: Crossval2/val
+    masks:
+      - Maps/STAPLE
+  test:
+    images: Crossval2/val
+    masks:
+      - Maps/STAPLE
+  repeat_train_images:
+    - 'slide001_core145.png'
+    - 'slide007_core005.png'
+    - 'slide007_core044.png'
+    - 'slide003_core068.png'
+    - 'slide007_core016.png'
+    - 'slide002_core073.png'
+    - 'slide002_core144.png'
+    - 'slide001_core010.png'
+    - 'slide002_core143.png'
+    - 'slide002_core010.png'
+    - 'slide003_core096.png'
+    - 'slide007_core043.png'
+  repeat_factor: 4
+  visualize_images:
+    train:
+      - 'slide001_core005.png'
+      - 'slide001_core011.png'
+      - 'slide001_core146.png'
+      - 'slide001_core156.png'
+      - 'slide002_core033.png'
+      - 'slide002_core050.png'
+      - 'slide002_core072.png'
+      - 'slide005_core075.png'
+      - 'slide005_core104.png'
+      - 'slide007_core146.png'
+    val:
+      - 'slide001_core005.png'
+      - 'slide001_core111.png'
+      - 'slide001_core160.png'
+      - 'slide002_core009.png'
+      - 'slide002_core140.png'
+      - 'slide003_core046.png'
+      - 'slide005_core074.png'
+      - 'slide005_core140.png'
+      - 'slide006_core083.png'
+      - 'slide006_core120.png'
+      - 'slide006_core129.png'
+      - 'slide007_core048.png'
+    test:
+      - 'slide001_core005.png'
+      - 'slide001_core111.png'
+      - 'slide001_core160.png'
+      - 'slide002_core009.png'
+      - 'slide002_core140.png'
+      - 'slide003_core046.png'
+      - 'slide005_core074.png'
+      - 'slide005_core140.png'
+      - 'slide006_core083.png'
+      - 'slide006_core120.png'
+      - 'slide006_core129.png'
+      - 'slide007_core048.png'
+  normalization: False
+  augmentation:
+    use_augmentation: True # switch everything off and on, if True automatically flips and 90 degree rotations are used in this case
+    gaussian_blur_kernel: 3 # range 3-7
+    brightness_limit: 0.2
+    contrast_limit: 0.2
+    hue_shift_limit: 20
+    sat_shift_limit: 30
+
+
+
