@@ -30,6 +30,19 @@ list_gg5 = ['slide001_core145.png', 'slide007_core005.png', 'slide007_core044.pn
             'slide002_core009.png', 'slide005_core092.png', 'slide002_core074.png', 'slide002_core140.png',
             'slide002_core143.png', 'slide002_core010.png', 'slide003_core096.png', 'slide007_core043.png']
 
+- 'slide001_core145.png'
+- 'slide007_core005.png'
+- 'slide007_core044.png'
+- 'slide003_core068.png'
+- 'slide002_core009.png'
+- 'slide005_core092.png'
+- 'slide002_core074.png'
+- 'slide002_core140.png'
+- 'slide002_core143.png'
+- 'slide002_core010.png'
+- 'slide003_core096.png'
+- 'slide007_core043.png'
+
 def convert_masks(mask):
     # The initial classes are 0 (background), 1 (normal tissue), 3 (GG3), 4 (GG4), 5 (GG5), 6 (normal tissue)
     # We move these classes to: 0 (normal tissue), 1 (GG3), 2 (GG4), 3 (GG5), 4 (background)

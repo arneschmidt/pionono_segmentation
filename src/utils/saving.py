@@ -221,7 +221,7 @@ def convert_std_to_rgb(std):
     h = std.shape[0]
     w = std.shape[1]
     var_rgb = np.zeros((h, w, 3), dtype=np.uint8)
-    values = np.clip(255 - (std * 1000), a_min=0, a_max=255).astype(int)
+    values = np.clip(255 - (std * 2000), a_min=0, a_max=255).astype(int)
     var_rgb[:, :, 0]= values
     var_rgb[:, :, 1]= values
     var_rgb[:, :, 2]= values
