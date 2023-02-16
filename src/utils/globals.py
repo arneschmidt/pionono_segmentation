@@ -37,7 +37,7 @@ def init_global_config(args):
                 exp_config = yaml.full_load(file)
             config = config_update(config, exp_config)
         config['logging']['experiment_folder'] = args.experiment_folder
-        exp_fold = args.experiment_folder.split("/")[-2:]
+        exp_fold = args.experiment_folder.split("/")[-3:]
         exp_fold = "_".join(exp_fold)
         config['logging']['run_name'] = exp_fold
     else:

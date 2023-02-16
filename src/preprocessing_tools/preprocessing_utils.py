@@ -285,3 +285,20 @@ def convert_to_rgb(config, map_annotator_dirs):
             assert np.all(image <= 255)
 
             cv2.imwrite(img_path_out, image)
+
+def create_gold_label_proportion_folders(path, gold_dir, proportions):
+    in_dir = path + gold_dir
+    masks_list = os.listdir(in_dir)
+    np.random.seed(0)
+
+    for i, p in enumerate(proportions):
+        out_dir = path + gold_dir.replace('/', '_' + str(p) + '/')
+        os.makedirs(out_dir, exist_ok=True)
+        mask_selection = np.random.choice(masks_list, p, replace=False)
+        for m in mask_selection:
+            shutil.copy(in_dir + m, out_dir + m)
+
+
+
+
+

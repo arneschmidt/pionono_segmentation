@@ -1,7 +1,7 @@
 import argparse
 import numpy as np
 from preprocessing_tools.preprocessing_utils import resize_all_images, create_voting_masks, \
-    create_crossvalidation_splits, convert_to_rgb, calculate_dataset_statistics
+    create_crossvalidation_splits, convert_to_rgb, calculate_dataset_statistics, create_gold_label_proportion_folders
 
 CLASS_COLORS_BGR = [[128, 255, 96], [32, 224, 255], [0, 104, 255], [0, 0, 255], [255, 255, 255]]
 
@@ -30,19 +30,6 @@ list_gg5 = ['slide001_core145.png', 'slide007_core005.png', 'slide007_core044.pn
             'slide002_core009.png', 'slide005_core092.png', 'slide002_core074.png', 'slide002_core140.png',
             'slide002_core143.png', 'slide002_core010.png', 'slide003_core096.png', 'slide007_core043.png']
 
-- 'slide001_core145.png'
-- 'slide007_core005.png'
-- 'slide007_core044.png'
-- 'slide003_core068.png'
-- 'slide002_core009.png'
-- 'slide005_core092.png'
-- 'slide002_core074.png'
-- 'slide002_core140.png'
-- 'slide002_core143.png'
-- 'slide002_core010.png'
-- 'slide003_core096.png'
-- 'slide007_core043.png'
-
 def convert_masks(mask):
     # The initial classes are 0 (background), 1 (normal tissue), 3 (GG3), 4 (GG4), 5 (GG5), 6 (normal tissue)
     # We move these classes to: 0 (normal tissue), 1 (GG3), 2 (GG4), 3 (GG5), 4 (background)
@@ -55,20 +42,22 @@ def convert_masks(mask):
     return mask
 
 mask_fct = convert_masks
+#
+# config.update({'resize_resolution': 1024})
+#
+# resize_all_images(config, config['input_dir'], mask_fct)
+#
+# create_voting_masks(config, 'majority', dir_name='MV/')
+#
+# create_voting_masks(config, 'staple', dir_name='STAPLE/')
+#
+# create_crossvalidation_splits(config, config['output_dir'] + config['train_img_dir'], list_gg5)
+#
+# convert_to_rgb(config, ['Maps1_T/', 'Maps2_T/', 'Maps3_T/', 'Maps4_T/', 'Maps5_T/', 'Maps6_T/', 'STAPLE/', 'MV/'])
+#
+# calculate_dataset_statistics(config['output_dir'] + config['map_dir'] + 'STAPLE/', 'total')
 
-config.update({'resize_resolution': 1024})
-
-resize_all_images(config, config['input_dir'], mask_fct)
-
-create_voting_masks(config, 'majority', dir_name='MV/')
-
-create_voting_masks(config, 'staple', dir_name='STAPLE/')
-
-create_crossvalidation_splits(config, config['output_dir'] + config['train_img_dir'], list_gg5)
-
-convert_to_rgb(config, ['Maps1_T/', 'Maps2_T/', 'Maps3_T/', 'Maps4_T/', 'Maps5_T/', 'Maps6_T/', 'STAPLE/', 'MV/'])
-
-calculate_dataset_statistics(config.output_dir + config.map_dir + 'STAPLE/', 'total')
+create_gold_label_proportion_folders(config['output_dir'] + config['map_dir'],'STAPLE/', [20, 40, 60, 80, 100])
 
 
 
