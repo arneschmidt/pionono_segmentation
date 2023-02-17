@@ -127,8 +127,8 @@ def resize_images_in_folder(config, in_dir, out_dir, resize_type='nearest', mask
     # print('Image shapes: ' + np.unique(resolution_list))
 
 def resize_all_images(config, input_dir, mask_fct):
-    # resize_images_in_folder(config, input_dir + config['train_img_dir'], config['output_dir'] + config['train_img_dir'], 'bicubic')
-    # resize_images_in_folder(config, input_dir + config['test_img_dir'], config['output_dir'] + config['test_img_dir'], 'bicubic')
+    resize_images_in_folder(config, input_dir + config['train_img_dir'], config['output_dir'] + config['train_img_dir'], 'bicubic')
+    resize_images_in_folder(config, input_dir + config['test_img_dir'], config['output_dir'] + config['test_img_dir'], 'bicubic')
     for annotator_dir in config['map_annotator_dirs']:
         resize_images_in_folder(config, input_dir + config['map_dir'] + annotator_dir,
                                 config['output_dir'] + config['map_dir'] + annotator_dir, 'nearest', mask_fct=mask_fct)

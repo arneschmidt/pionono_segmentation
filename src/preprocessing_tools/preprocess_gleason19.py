@@ -45,7 +45,7 @@ mask_fct = convert_masks
 #
 # config.update({'resize_resolution': 1024})
 #
-# resize_all_images(config, config['input_dir'], mask_fct)
+resize_all_images(config, config['input_dir'], mask_fct)
 #
 # create_voting_masks(config, 'majority', dir_name='MV/')
 #

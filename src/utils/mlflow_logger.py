@@ -14,7 +14,7 @@ def start_logging():
     data_config_log = config['data'].copy()
     data_config_log.pop('visualize_images') # drop this because it is often to long to be logged
     data_config_log.pop('repeat_train_images') # drop this because it is often to long to be logged
-
+    data_config_log.pop('train')
     # experiment = mlflow.set_experiment(experiment_name=config["data"]["dataset_name"])
     mlflow.set_experiment(experiment_name=config["data"]["dataset_name"])
     # with mlflow.start_run(experiment_id=experiment.experiment_id, run_name='test') as run:
@@ -25,7 +25,6 @@ def start_logging():
     mlflow.log_params(config['model'])
     mlflow.log_params(data_config_log)
     mlflow.set_tags(config['logging']['tags'])
-    mlflow.log_artifact('config.yaml')
 
 def log_artifact_folder():
     mlflow.log_artifacts(globals.config['logging']['experiment_folder'])
