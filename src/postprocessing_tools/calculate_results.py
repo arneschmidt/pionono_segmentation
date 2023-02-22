@@ -44,7 +44,7 @@ else:
 mlflow.set_experiment(experiment_name=dataset_name)
 
 # derive run name
-run_name = exp_dir.split("/")[-2] + '_crossval_results'
+run_name = exp_dir.split("/")[-3] + '_' + exp_dir.split("/")[-2] + '_crossval_results'
 mlflow.start_run(run_name=run_name)
 
 # todo: save to mlflow
