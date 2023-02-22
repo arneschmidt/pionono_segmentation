@@ -58,7 +58,7 @@ def save_test_image_variability(model, test_name, k, mode):
     dir = os.path.join(globals.config['logging']['experiment_epoch_folder'], visual_dir)
     dir = os.path.join(dir, 'variability')
     os.makedirs(dir, exist_ok=True)
-    if method == 'pionono':
+    if method == 'pionono' and not globals.config['model']['pionono_config']['always_goldpred']:
         for i in range(len(annotators)):
             a = annotators[i]
             a_dir = os.path.join(dir, a)
