@@ -11,7 +11,7 @@ The model is trained end-to-end with a combination of log-likelihood loss (LL) a
 
 
 ## Dependencies/ Run Environment
-* Use Miniconda/Anaconda to install all dependencies in an environment with `conda env create -f environment.yml`
+* Use Miniconda/Anaconda to install all dependencies in an environment with `conda env create -f environment.yaml`
 * Activate the environment with `conda activate seg_crowd_env`
 * For more information see www.anaconda.com
 * All dependencies are also listed in the requirements.txt
@@ -23,7 +23,7 @@ The model is trained end-to-end with a combination of log-likelihood loss (LL) a
   * dataset_dependent/arvaniti_tma/experiments
 * To reproduce all crossvalidation experiments of Gleason 2019, run `./dataset_dependent/gleason19/experiments/cross_validation/run.sh`
 * To reproduce all experiments of external testing, run `dataset_dependent/gleason19/experiments/external_testing/run.sh`
-* To reproduce all crossvalidation experiments of Arvaniti TMA, run `dataset_dependent/gleason19/experiments/external_testing/run.sh`
+* To reproduce all crossvalidation experiments of Arvaniti TMA, run `dataset_dependent/arvaniti_tma/experiments/cross_validation/run.sh`
 
 ## Configuration
 * For experiments there are three levels of configurations:
