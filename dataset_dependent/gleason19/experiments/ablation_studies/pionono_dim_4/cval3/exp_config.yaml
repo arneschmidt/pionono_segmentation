@@ -1,0 +1,34 @@
+data:
+  train:
+    masks:
+      - Maps/STAPLE
+      - Maps/Maps1_T
+      - Maps/Maps2_T
+      - Maps/Maps3_T
+      - Maps/Maps4_T
+      - Maps/Maps5_T
+      - Maps/Maps6_T
+  val:
+    masks:
+      - Maps/STAPLE
+      - Maps/Maps1_T
+      - Maps/Maps2_T
+      - Maps/Maps3_T
+      - Maps/Maps4_T
+      - Maps/Maps5_T
+      - Maps/Maps6_T
+  test:
+    masks:
+      - Maps/STAPLE
+      - Maps/Maps1_T
+      - Maps/Maps2_T
+      - Maps/Maps3_T
+      - Maps/Maps4_T
+      - Maps/Maps5_T
+      - Maps/Maps6_T
+
+model:
+  seed: 3
+  pionono_config:
+    gold_annotators:
+      - 0

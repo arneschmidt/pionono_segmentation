@@ -10,7 +10,7 @@ model:
   lr_decay_param: 0.1
   backbone: unet # unet, unetpp, deeplabv3p, pspnet, linknet
   encoder:
-    backbone: efficientnet-b2 # densenet121, resnet34, efficientnet-b0, efficientnet-b1, ..
+    backbone: resnet34 # densenet121, resnet34, resnet18, efficientnet-b1, ..
     weights: imagenet # imagenet or None
   decoder:
     activation: softmax # softmax or None
@@ -18,7 +18,7 @@ model:
   pionono_config:
     mc_samples: 5
     no_head_layers: 3
-    kl_factor: 0.001
+    kl_factor: 0.0005
     reg_factor: 0.00001
     latent_dim: 8
     gold_annotators:

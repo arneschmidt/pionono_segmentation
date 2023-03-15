@@ -1,0 +1,7 @@
+data:
+  train:
+    masks:
+      - Maps/STAPLE
+
+model:
+  seed: 0

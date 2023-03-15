@@ -1,12 +1,3 @@
-# TODO
-# make correct cross validation
-# implement staple
-# IDEAS: use F * (1 + z) instead of [F, z]
-#
-# today: set up experiments with best performing model, find expressive test images
-# tomorrow: implement model freezing
-
-
 import os
 import argparse
 import traceback
@@ -21,14 +12,13 @@ from utils.mlflow_logger import start_logging, log_artifact_folder
 
 
 def main():
-    print(os.curdir)
-
+    # log metrics and artifacts with mlflow
     start_logging()
     try:
         # load data
         trainloader, validate_data, test_data, annotators = get_data()
 
-        # load and train the model
+        # load, train and test the model
         model_handler = ModelHandler(annotators)
         model_handler.train(trainloader, validate_data)
         model_handler.test(test_data)
@@ -44,14 +34,14 @@ def main():
 
 if __name__ == "__main__":
     print('Load configuration')
-
     parser = argparse.ArgumentParser(description="Cancer Classification")
     parser.add_argument("--config", "-c", type=str, default="./config.yaml",
                         help="Config path (yaml file expected) to default config.")
     parser.add_argument("--dataset_config", "-dc", type=str, default="./dataset_dependent/gleason19/data_configs/crowd/data_config_crossval0.yaml",
-                        help="Config path (yaml file expected) to default config.")
+                        help="Config path (yaml file expected) to dataset config. Parameters will override defaults.")
     parser.add_argument("--experiment_folder", "-ef", type=str, default="None",
-                        help="Config path to experiment folder. Parameters will override defaults. Optional.")
+                        help="Config path to experiment folder. This folder is expected to contain a file called "
+                             "'exp_config.yaml'. Parameters will override defaults. Optional.")
     args = parser.parse_args()
     init_global_config(args)
     config = utils.globals.config

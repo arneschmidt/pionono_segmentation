@@ -1,0 +1,7 @@
+data:
+  train:
+    masks:
+      - Gleason_2019/resized_dataset_1024/Maps/STAPLE
+
+model:
+  seed: 3

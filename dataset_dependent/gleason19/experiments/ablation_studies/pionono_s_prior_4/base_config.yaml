@@ -1,0 +1,37 @@
+model:
+  seed: 0
+  load_model: None
+  batch_size: 3
+  optimizer: adam # sgd_mom, adam
+  epochs: 100
+  loss: gdice # ce, dice, gdice, focal
+  learning_rate: 0.0001
+  lr_decay_after_epoch: 40
+  lr_decay_param: 0.1
+  backbone: unet # unet, unetpp, deeplabv3p, pspnet, linknet
+  encoder:
+    backbone: resnet34 # densenet121, resnet34, resnet18, efficientnet-b1, ..
+    weights: imagenet # imagenet or None
+  decoder:
+    activation: softmax # softmax or None
+  method: pionono # supervised, prob-unet, conf_matrix, pionono
+  pionono_config:
+    mc_samples: 5
+    no_head_layers: 3
+    kl_factor: 0.0005
+    reg_factor: 0.00001
+    latent_dim: 8
+    gold_annotators:
+      - 0
+    always_goldpred: False
+    z_learning_rate: 0.02
+    z_prior_sigma: 4.0
+    z_posterior_init_sigma: 8.0
+
+logging:
+  interval: 20
+  artifact_interval: 20 # steps of artifact (e.g. visualization) logging (in number of epochs)
+  mlruns_folder: /work/work_arne/mlflow_server # http://127.0.0.1:5002
+  tags:
+    stage: initial
+    spec: default

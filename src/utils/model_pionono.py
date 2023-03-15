@@ -8,7 +8,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class LatentVariable(nn.Module):
     """
-
+    This module defines the random latent variable z with distribution q(z|r) with r being the rater.
     """
     def __init__(self, num_annotators, latent_dims=2, prior_mu_value=0.0, prior_sigma_value=1.0, z_posterior_init_sigma=0.0):
         super(LatentVariable, self).__init__()
@@ -82,8 +82,8 @@ class LatentVariable(nn.Module):
 
 class PiononoHead(nn.Module):
     """
-    A function composed of no_convs_fcomb times a 1x1 convolution that combines the sample taken from the latent space,
-    and output of the UNet (the feature map) by concatenating them along their channel axis.
+    The Segmentation head combines the sample taken from the latent space,
+    and feature map by concatenating them along their channel axis.
     """
     def __init__(self, num_filters_last_layer, latent_dim, num_output_channels, num_classes, no_convs_fcomb,
                  head_kernelsize, head_dilation, use_tile=True):
@@ -161,12 +161,8 @@ class PiononoHead(nn.Module):
 
 class PiononoModel(nn.Module):
     """
-    A probabilistic UNet (https://arxiv.org/abs/1806.05034) implementation.
-    input_channels: the number of channels in the image (1 for greyscale and 3 for RGB)
-    num_classes: the number of classes to predict
-    num_filters: is a list consisint of the amount of filters layer
-    latent_dim: dimension of the latent space
-    no_cons_per_block: no convs per block in the (convolutional) encoder of prior and posterior
+    The implementation of the Pionono Model. It consists of a segmentation backbone, probabilistic latent variable and
+    segmentation head.
     """
 
     def __init__(self, input_channels=3, num_classes=1, annotators=6, gold_annotators=[0], latent_dim=8,
@@ -193,11 +189,9 @@ class PiononoModel(nn.Module):
         self.phase = 'segmentation'
         self.name = 'PiononoModel'
 
-    # TODO: move annotator to sample function
     def forward(self, patch):
         """
-        Construct prior latent space for patch and run patch through UNet,
-        in case training is True also construct posterior latent space
+        Get feature maps.
         """
         self.unet_features = self.unet.forward(patch)
 
@@ -212,8 +206,7 @@ class PiononoModel(nn.Module):
 
     def sample(self, use_z_mean: bool, annotator_ids: torch.tensor, annotator_list: list = None, use_softmax=True):
         """
-        Sample a segmentation by reconstructing from a prior sample
-        and combining this with UNet features
+        Get sample of output distribution. Annotator list defines the distributions (q|r) that are used.
         """
         if annotator_list is not None:
             annotator_ids = self.map_annotators_to_correct_id(annotator_ids, annotator_list)
@@ -227,6 +220,9 @@ class PiononoModel(nn.Module):
         return pred
 
     def get_gold_predictions(self):
+        """
+        Get gold predictions (based on the gold distribution).
+        """
         if len(self.gold_annotators) == 1:
             annotator = torch.ones(self.unet_features.shape[0]).to(device) * self.gold_annotators[0]
             mean, std = self.mc_sampling(annotator, use_softmax=True)
@@ -245,6 +241,9 @@ class PiononoModel(nn.Module):
         return mean, std
 
     def mc_sampling(self, annotator: torch.tensor = None, use_softmax=True):
+        """
+        Monte-Carlo sampling to get mean and std of output distribution.
+        """
         if self.training:
             mc_samples = self.train_mc_samples
         else:
@@ -269,12 +268,18 @@ class PiononoModel(nn.Module):
         return -(self.log_likelihood_loss + self.kl_loss)
 
     def combined_loss(self, labels, loss_fct, annotator):
+        """
+        Combine ELBO with regularization of deep network weights.
+        """
         elbo = self.elbo(labels, loss_fct=loss_fct, annotator=annotator)
         self.reg_loss = l2_regularisation(self.head.layers) * self.reg_factor
         loss = -elbo + self.reg_loss
         return loss
 
     def train_step(self, images, labels, loss_fct, ann_ids):
+        """
+        Make one train step, returning loss and predictions.
+        """
         self.forward(images)
         loss = self.combined_loss(labels, loss_fct, ann_ids)
         y_pred = self.preds

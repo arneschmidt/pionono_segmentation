@@ -13,7 +13,7 @@ data:
       - Maps/Maps1_T
       - Maps/Maps2_T
   val:
-    images: Crossval0/val
+    images: Crossval0/train
     masks:
       - Maps/Maps1_T
       - Maps/Maps2_T
@@ -80,11 +80,10 @@ data:
   normalization: False
   augmentation:
     use_augmentation: True # switch everything off and on, if True automatically flips and 90 degree rotations are used in this case
-    gaussian_blur_kernel: 3 # range 3-7
-    brightness_limit: 0.2
-    contrast_limit: 0.2
-    hue_shift_limit: 20
-    sat_shift_limit: 30
-
+    gaussian_blur_kernel: 2 # range 3-7
+    brightness_limit: 0.1
+    contrast_limit: 0.1
+    hue_shift_limit: 10
+    sat_shift_limit: 10
 
 

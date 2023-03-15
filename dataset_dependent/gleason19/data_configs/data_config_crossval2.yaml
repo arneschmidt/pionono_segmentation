@@ -1,7 +1,6 @@
 data:
   dataset_name: gleason19_crowdsourcing
   image_resolution: 1024
-  crowd: True
   class_no: 5
   class_names: ['NC', 'GG3', 'GG4', 'GG5', 'other']
   class_weights: [1., 1., 1., 1., 1.]
@@ -18,7 +17,7 @@ data:
       - Maps/Maps5_T
       - Maps/Maps6_T
   val:
-    images: Crossval2/val
+    images: Crossval2/train
     masks:
       - Maps/STAPLE
   test:
@@ -38,7 +37,7 @@ data:
     - 'slide002_core010.png'
     - 'slide003_core096.png'
     - 'slide007_core043.png'
-  repeat_factor: 4
+  repeat_factor: 2
   visualize_images:
     train:
       - 'slide001_core005.png'
@@ -80,11 +79,10 @@ data:
   normalization: False
   augmentation:
     use_augmentation: True # switch everything off and on, if True automatically flips and 90 degree rotations are used in this case
-    gaussian_blur_kernel: 3 # range 3-7
-    brightness_limit: 0.2
-    contrast_limit: 0.2
-    hue_shift_limit: 20
-    sat_shift_limit: 30
-
+    gaussian_blur_kernel: 2 # range 3-7
+    brightness_limit: 0.1
+    contrast_limit: 0.1
+    hue_shift_limit: 10
+    sat_shift_limit: 10
 
 
