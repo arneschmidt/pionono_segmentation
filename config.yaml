@@ -1,6 +1,6 @@
 model:
   seed: 0
-  load_model: None #../../experiments/gleason19/experiments/cross_validation/sup_staple/cval0/model.pth #../../experiments/arvaniti_tma/experiments/initial_experiments/pio_enetb0/model.pth
+  load_model: None
   load_only_state_dict: False
   batch_size: 3
   optimizer: adam # sgd_mom, adam
@@ -11,7 +11,7 @@ model:
   lr_decay_param: 0.1
   backbone: unet # unet, unetpp, deeplabv3p, pspnet, linknet
   encoder:
-    backbone: resnet34 # densenet121, resnet34, efficientnet-b0, efficientnet-b1, ..
+    backbone: resnet34
     weights: imagenet # imagenet or None
   decoder:
     activation: softmax # softmax or None
