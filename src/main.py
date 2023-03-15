@@ -39,7 +39,7 @@ if __name__ == "__main__":
                         help="Config path (yaml file expected) to default config.")
     parser.add_argument("--dataset_config", "-dc", type=str, default="./dataset_dependent/gleason19/data_configs/data_config_crossval0.yaml",
                         help="Config path (yaml file expected) to dataset config. Parameters will override defaults.")
-    parser.add_argument("--experiment_folder", "-ef", type=str, default="None",
+    parser.add_argument("--experiment_folder", "-ef", type=str, default="./dataset_dependent/gleason19/experiments/cross_validation/pionono/cval0",
                         help="Config path to experiment folder. This folder is expected to contain a file called "
                              "'exp_config.yaml'. Parameters will override defaults. Optional.")
     args = parser.parse_args()
