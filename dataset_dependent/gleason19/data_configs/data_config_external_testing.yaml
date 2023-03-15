@@ -19,12 +19,7 @@ data:
   val:
     images: Gleason_2019/resized_dataset_1024/Train_imgs
     masks:
-      - Gleason_2019/resized_dataset_1024/Maps/Maps1_T
-      - Gleason_2019/resized_dataset_1024/Maps/Maps2_T
-      - Gleason_2019/resized_dataset_1024/Maps/Maps3_T
-      - Gleason_2019/resized_dataset_1024/Maps/Maps4_T
-      - Gleason_2019/resized_dataset_1024/Maps/Maps5_T
-      - Gleason_2019/resized_dataset_1024/Maps/Maps6_T
+      - Gleason_2019/resized_dataset_1024/Maps/STAPLE
   test:
     images: Arvaniti_TMA/resized_dataset_512/Test_imgs
     masks:
