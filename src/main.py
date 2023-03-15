@@ -4,9 +4,9 @@ import traceback
 
 import torch
 
+import utils.globals
 from data import get_data
 from utils.globals import init_global_config
-import utils.globals
 from model_handler import ModelHandler
 from utils.mlflow_logger import start_logging, log_artifact_folder
 
