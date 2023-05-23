@@ -6,11 +6,11 @@ model:
   epochs: 100
   loss: gdice # ce, dice, gdice, focal
   learning_rate: 0.0001
-  lr_decay_after_epoch: 10
+  lr_decay_after_epoch: 40
   lr_decay_param: 0.1
   backbone: unet # unet, unetpp, deeplabv3p, pspnet, linknet
   encoder:
-    backbone: resnet34 # densenet121, resnet34, resnet18, efficientnet-b1, ..
+    backbone: vgg16 # densenet121, resnet34, resnet18, efficientnet-b1, ..
     weights: imagenet # imagenet or None
   decoder:
     activation: softmax # softmax or None
@@ -23,16 +23,15 @@ model:
     latent_dim: 8
     gold_annotators:
       - 0
-    always_goldpred: True
+    always_goldpred: False
     z_learning_rate: 0.02
     z_prior_sigma: 2.0
     z_posterior_init_sigma: 8.0
 
 logging:
-  interval: 50
-  artifact_interval: 10 # steps of artifact (e.g. visualization) logging (in number of epochs)
+  interval: 20
+  artifact_interval: 1000 # steps of artifact (e.g. visualization) logging (in number of epochs)
   mlruns_folder: /work/work_arne/mlflow_server # http://127.0.0.1:5002
   tags:
-    stage: final
-    spec: pionono
-    experiment: crossval
+    stage: initial
+    spec: default

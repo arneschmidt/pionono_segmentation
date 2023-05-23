@@ -1,0 +1,76 @@
+data:
+  dataset_name: breast_tnbc
+  image_resolution: 512
+  class_no: 5
+  class_names: ['other', 'tumor', 'stroma', 'inflammation', 'necrosis']
+  class_weights: [1., 1., 1., 1., 1.] # [2.69672952, 1.13585435, 0.78206914, 25.60014031, 0.41134248]
+  ignore_last_class: False # set True if last class will be ignored during training and testing
+  ignore_last_class_only_for_testing: False # set True if last class will be ignored during  testing
+  path: /data/BasesDeDatos/Structured_Crowdsourced_Segmentation/512/
+  train:
+    images: patches/Train
+    masks:
+      - masks/Train/expert
+      - masks/Train/NP1
+      - masks/Train/NP2
+      - masks/Train/NP3
+      - masks/Train/NP4
+      - masks/Train/NP5
+      - masks/Train/NP6
+      - masks/Train/NP7
+      - masks/Train/NP8
+      - masks/Train/NP9
+      - masks/Train/NP10
+      - masks/Train/NP11
+      - masks/Train/NP12
+      - masks/Train/NP14
+      - masks/Train/NP15
+      - masks/Train/NP16
+      - masks/Train/NP17
+      - masks/Train/NP18
+      - masks/Train/NP19
+      - masks/Train/NP20
+      - masks/Train/NP21
+  val:
+    images: patches/Test
+    masks:
+      - masks/Test/expert
+  test:
+    images: patches/Test
+    masks:
+      - masks/Test/expert
+  repeat_train_images:
+    - 'core_A1P4_EW_x_ini_358_y_ini_3580.png'
+  repeat_factor: 0
+  visualize_images:
+    train:
+      - 'core_A1P4_EW_x_ini_358_y_ini_3580.png'
+      - 'eval_A73Y_LL_x_ini_1790_y_ini_716.png'
+      - 'core_A0DA_A7_x_ini_4296_y_ini_4654.png'
+      - 'core_A3XS_A2_x_ini_5728_y_ini_3222.png'
+      - 'core_A159_E2_x_ini_5728_y_ini_2506.png'
+    val:
+      - 'core_A0CE_A7_x_ini_1790_y_ini_716.png'
+      - 'core_A0CE_A7_x_ini_1074_y_ini_3580.png'
+      - 'core_A0CE_A7_x_ini_1790_y_ini_716.png'
+      - 'core_A1JL_D8_x_ini_4296_y_ini_1432.png'
+      - 'core_A1JL_D8_x_ini_6086_y_ini_2864.png'
+      - 'core_A2DB_GM_x_ini_5370_y_ini_1790.png'
+      - 'core_A2DB_GM_x_ini_5728_y_ini_6086.png'
+    test:
+      - 'core_A1EW_BH_x_ini_3580_y_ini_2864.png'
+      - 'core_A6SB_EW_x_ini_1074_y_ini_2864.png'
+      - 'core_A12F_AO_x_ini_0_y_ini_716.png'
+      - 'core_A12F_AO_x_ini_1074_y_ini_0.png'
+      - 'core_A6SB_EW_x_ini_4296_y_ini_2864.png'
+  normalization: False
+  augmentation:
+    use_augmentation: True # switch everything off and on, if True automatically flips and 90 degree rotations are used in this case
+    gaussian_blur_kernel: 2 # range 3-7
+    brightness_limit: 0.1
+    contrast_limit: 0.1
+    hue_shift_limit: 10
+    sat_shift_limit: 10
+
+
+
