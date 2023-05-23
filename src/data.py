@@ -146,7 +146,7 @@ class Dataset(torch.utils.data.Dataset):
         image_path = os.path.join(data_path, image_path)
 
         mask_paths = [os.path.join(data_path, m) for m in masks_dirs]
-        self.annotators = masks_dirs
+        self.annotators = [x.split('/')[-1] for x in masks_dirs]
         self.mask_paths = mask_paths
 
         self.ids = self.get_valid_ids(os.listdir(image_path), mask_paths, repeat_images, repeat_factor)

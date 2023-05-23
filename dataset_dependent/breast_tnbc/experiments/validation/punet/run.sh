@@ -1,0 +1,6 @@
+python src/main.py -c ../../experiments/breast_tnbc/experiments/validation/punet/base_config.yaml -dc ../../experiments/breast_tnbc/data_configs/data_config_val0.yaml -ef ../../experiments/breast_tnbc/experiments/validation/punet/cval0
+python src/main.py -c ../../experiments/breast_tnbc/experiments/validation/punet/base_config.yaml -dc ../../experiments/breast_tnbc/data_configs/data_config_val0.yaml -ef ../../experiments/breast_tnbc/experiments/validation/punet/cval1
+python src/main.py -c ../../experiments/breast_tnbc/experiments/validation/punet/base_config.yaml -dc ../../experiments/breast_tnbc/data_configs/data_config_val0.yaml -ef ../../experiments/breast_tnbc/experiments/validation/punet/cval2
+python src/main.py -c ../../experiments/breast_tnbc/experiments/validation/punet/base_config.yaml -dc ../../experiments/breast_tnbc/data_configs/data_config_val0.yaml -ef ../../experiments/breast_tnbc/experiments/validation/punet/cval3
+
+python src/postprocessing_tools/calculate_results.py -e ../../experiments/breast_tnbc/experiments/validation/punet/

@@ -137,11 +137,12 @@ def plot_and_save_distributions(mu_list, cov_list, dir_path):
 
    # Plotting contour plots
     annotators = globals.config['data']['train']['masks']
-    colors = list(mcolors.TABLEAU_COLORS.keys())
+    # colors = list(mcolors.TABLEAU_COLORS.keys())
     legend_list =[]
     for idx, val in enumerate(pdf_list):
         contourline = np.max(val) * (3/4)
-        cntr = plt.contour(X, Y, val, levels=[contourline], colors=colors[idx], alpha=0.7)
+        # cntr = plt.contour(X, Y, val, levels=[contourline], colors=colors[idx], alpha=0.7)
+        cntr = plt.contour(X, Y, val, levels=[contourline], alpha=0.7)
         h, _ = cntr.legend_elements()
         legend_list.append(h[0])
     plt.legend(legend_list, annotators)
