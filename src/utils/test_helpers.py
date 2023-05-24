@@ -37,9 +37,9 @@ def segmentation_scores(label_trues, label_preds, shortened):
     label_trues = np.array(label_trues, dtype='int8')
 
     if ignore_last_class:
-        class_no = class_no + 1
+        label_trues = label_trues[label_trues!=class_no+1]
 
-    if ignore_last_class or ignore_last_class_only_for_testing:
+    if ignore_last_class_only_for_testing:
         label_preds = label_preds[label_trues!=class_no]
         label_trues = label_trues[label_trues!=class_no]
         nc_class = np.ones_like(label_preds)
