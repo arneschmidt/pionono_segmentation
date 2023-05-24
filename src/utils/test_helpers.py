@@ -48,9 +48,9 @@ def segmentation_scores(label_trues, label_preds, shortened):
 
         results['macro_dice'] = dice_per_class.mean()
 
-        # intersection = (label_preds == label_trues).sum(axis=None)
-        # sum_ = 2 * np.prod(label_preds.shape)
-        # results['micro_dice'] = ((2 * intersection + 1e-6) / (sum_ + 1e-6))
+        intersection = (label_preds == label_trues).sum(axis=None)
+        sum_ = 2 * np.prod(label_preds.shape)
+        results['micro_dice'] = ((2 * intersection + 1e-6) / (sum_ + 1e-6))
 
         for class_id in range(class_no):
             # results['dice_class_' + str(class_id) + '_' + class_names[class_id]] = dice_per_class[class_id]
