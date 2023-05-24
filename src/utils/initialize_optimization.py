@@ -39,7 +39,7 @@ def init_optimization(model):
     if loss_mode == 'ce':
         loss_fct = torch.nn.CrossEntropyLoss(weight=class_weights, ignore_index=ignore_index)
     elif loss_mode == 'dice':
-        loss_fct = DiceLoss(ignore_index=ignore_index, mode='multiclass', from_logits=False)
+        loss_fct = DiceLoss(ignore_index=ignore_index, mode='multiclass', from_logits=True)
         # loss_fct = DiceLoss(weight=class_weights, normalization='softmax', ignore_index=ignore_index)
     elif loss_mode == 'gdice':
         loss_fct = GeneralizedDiceLoss(normalization='softmax')

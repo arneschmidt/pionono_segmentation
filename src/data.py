@@ -13,7 +13,7 @@ from segmentation_models_pytorch.encoders import get_preprocessing_fn
 from utils.preprocessing import get_preprocessing_fn_without_normalization
 
 
-def get_training_augmentation():
+def get_training_augmentation(ignore_class=4):
     aug_config = globals.config['data']['augmentation']
     if aug_config['use_augmentation']:
         train_transform = [
@@ -27,7 +27,7 @@ def get_training_augmentation():
                                     sat_shift_limit=aug_config['sat_shift_limit'],
                                     p=1.0),
             albu.Affine(scale=(0.95, 1.05), translate_percent=(-0.05, 0.05), shear=[-5, 5],
-                        rotate=[-360, 360], interpolation=cv2.INTER_CUBIC, cval=[255, 255, 255], cval_mask=4, p=1.0)
+                        rotate=[-360, 360], interpolation=cv2.INTER_CUBIC, cval=[255, 255, 255], cval_mask=ignore_class, p=1.0)
         ]
         composed_transform = albu.Compose(train_transform)
     else:
@@ -239,6 +239,7 @@ def get_data():
     config = globals.config
     batch_size = config['model']['batch_size']
     normalization = config['data']['normalization']
+    class_no = config['data']['class_no'] - 1 + int(config['data']['ignore_last_class']) # if ignore_last_class is set, class_no is index of ignored class
 
     if normalization:
         encoder_name = config['model']['encoder']['backbone']
@@ -256,7 +257,7 @@ def get_data():
     train_dataset = Dataset(config['data']['path'],
                             config['data']['train']['images'],
                             config['data']['train']['masks'],
-                            augmentation=get_training_augmentation(),
+                            augmentation=get_training_augmentation(ignore_class=class_no),
                             preprocessing = preprocessing,
                             repeat_images=config['data']['repeat_train_images'],
                             repeat_factor=config['data']['repeat_factor'])

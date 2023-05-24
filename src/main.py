@@ -10,6 +10,10 @@ from utils.globals import init_global_config
 from model_handler import ModelHandler
 from utils.mlflow_logger import start_logging, log_artifact_folder
 
+# check training with expert labels
+# check ignore last class
+# check normalization
+
 
 def main():
     # log metrics and artifacts with mlflow
