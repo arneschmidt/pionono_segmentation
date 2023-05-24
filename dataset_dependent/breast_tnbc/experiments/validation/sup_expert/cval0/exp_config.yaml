@@ -1,0 +1,7 @@
+data:
+  train:
+    masks:
+      - masks/Train/STAPLE
+
+model:
+  seed: 0
