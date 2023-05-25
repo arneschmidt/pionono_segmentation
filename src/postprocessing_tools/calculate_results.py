@@ -39,8 +39,10 @@ mlflow.set_tracking_uri(mlruns_folder)
 # derive dataset
 if 'gleason19' in exp_dir:
     dataset_name = 'gleason19_crowdsourcing'
-else:
+elif 'arvaniti_tma' in exp_dir:
     dataset_name = 'arvaniti_tma_crowdsourcing'
+else:
+    dataset_name = 'breast_tnbc'
 mlflow.set_experiment(experiment_name=dataset_name)
 
 # derive run name
