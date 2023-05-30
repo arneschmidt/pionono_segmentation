@@ -54,6 +54,9 @@ mlflow.log_metrics(mean)
 mlflow.log_metrics(se)
 mlflow.set_tag('mode', 'results')
 
+print(mean)
+print(se)
+
 mlflow.log_param('failed_cvs', failed_cvs)
 print('Failed cvs:')
 print(failed_cvs)
