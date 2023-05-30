@@ -6,7 +6,12 @@ from sklearn.metrics import accuracy_score, jaccard_score, f1_score, cohen_kappa
 def dice_coef_binary(y_true, y_pred):
     intersection = np.sum(y_true * y_pred)
     smooth = 0.0001
-    return (2. * intersection + smooth) / (np.sum(y_true) + np.sum(y_pred) + smooth)
+    if np.sum(y_true) == 0:
+        dice = 1.0
+    else:
+        dice = (2. * intersection + smooth) / (np.sum(y_true) + np.sum(y_pred) + smooth)
+
+    return dice
 
 def dice_coef_multilabel(y_true, y_pred):
     class_no = globals.config['data']['class_no']
@@ -61,6 +66,7 @@ def segmentation_scores(label_trues, label_preds, shortened):
 
     results['accuracy'] = accuracy_score(label_trues, label_preds)
     results['miou'] = jaccard_score(label_trues, label_preds, average="macro") # same as IoU!
+    results['micro_miou'] = jaccard_score(label_trues, label_preds, average="micro") # same as IoU!
     results['cohens_kappa'] = cohen_kappa_score(label_trues, label_preds, weights=None)
     results['cohens_kappa_quad'] = cohen_kappa_score(label_trues, label_preds, weights='quadratic')
 
