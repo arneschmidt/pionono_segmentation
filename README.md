@@ -1,5 +1,6 @@
+
 # Probabilistic Modeling of Inter- and Intra-observer Variability in Medical Image Segmentation
-This is the code of the Pionono model for medical image segmentation (Probabilistic Inter-Observer and iNtra-Observer variation NetwOrk), presented at
+This is the code of the Pionono model for medical image segmentation (Probabilistic Inter-Observer and iNtra-Observer variation NetwOrk), accepted for
 ICCV 2023. 
 
 ![](Pionono_model.png)
