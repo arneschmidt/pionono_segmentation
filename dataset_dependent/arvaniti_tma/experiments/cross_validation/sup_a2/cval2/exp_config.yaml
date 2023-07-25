@@ -1,0 +1,7 @@
+data:
+  train:
+    masks:
+      - Maps/Maps2_T
+
+model:
+  seed: 2

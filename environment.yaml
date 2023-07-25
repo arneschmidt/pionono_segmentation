@@ -1,4 +1,4 @@
-name: seg_crowd_env
+name: pionono_env
 channels:
   - simpleitk
   - pytorch
@@ -244,4 +244,4 @@ dependencies:
     - torchvision==0.11.2
     - tqdm==4.62.3
     - websocket-client==1.2.3
-prefix: /home/arne/miniconda3/envs/seg_crowd_env
+prefix: /home/mlopez/anaconda3/envs/seg_crowd_env

@@ -1,0 +1,26 @@
+model:
+  seed: 0
+  load_model: None
+  batch_size: 3
+  optimizer: adam # sgd_mom, adam
+  epochs: 30
+  loss: gdice # ce, dice, gdice, focal
+  learning_rate: 0.0001
+  lr_decay_after_epoch: 10
+  lr_decay_param: 0.1
+  backbone: unet # unet, unetpp, deeplabv3p, pspnet, linknet
+  encoder:
+    backbone: resnet34 # densenet121, resnet34, resnet18, efficientnet-b1, ..
+    weights: imagenet # imagenet or None
+  decoder:
+    activation: softmax # softmax or None
+  method: supervised # supervised, prob-unet, conf_matrix, pionono
+
+logging:
+  interval: 50
+  artifact_interval: 10 # steps of artifact (e.g. visualization) logging (in number of epochs)
+  mlruns_folder: /work/work_arne/mlflow_server # http://127.0.0.1:5002
+  tags:
+    stage: final
+    spec: sup_staple
+    experiment: crossval

@@ -2,6 +2,7 @@ import collections
 import yaml
 import os
 import warnings
+import shutil
 
 config = {}
 
@@ -20,11 +21,11 @@ def init_global_config(args):
     global config
 
     # load default config
-    with open(args.default_config) as file:
+    with open(args.config) as file:
         config = yaml.full_load(file)
 
     # load dataset config, overwrite parameters if double
-    with open(config["data"]["dataset_config"]) as file:
+    with open(args.dataset_config) as file:
         config_data_dependent = yaml.full_load(file)
     config = config_update(config, config_data_dependent)
 
@@ -36,7 +37,9 @@ def init_global_config(args):
                 exp_config = yaml.full_load(file)
             config = config_update(config, exp_config)
         config['logging']['experiment_folder'] = args.experiment_folder
-        config['logging']['run_name'] = os.path.basename(args.experiment_folder)
+        exp_fold = args.experiment_folder.split("/")[-3:]
+        exp_fold = "_".join(exp_fold)
+        config['logging']['run_name'] = exp_fold
     else:
         out_dir = './output/'
         os.makedirs(out_dir, exist_ok=True)
@@ -44,4 +47,10 @@ def init_global_config(args):
         config['logging']['experiment_folder'] = out_dir
         config['logging']['run_name'] = 'default'
 
+    for f in os.listdir(config['logging']['experiment_folder']):
+        path = os.path.join(config['logging']['experiment_folder'], f)
 
+        if os.path.isfile(path) and f != 'exp_config.yaml':
+            os.remove(path)
+        elif os.path.isdir(path):
+            shutil.rmtree(os.path.join(config['logging']['experiment_folder'], f))

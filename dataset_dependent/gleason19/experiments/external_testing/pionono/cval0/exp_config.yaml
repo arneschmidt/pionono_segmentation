@@ -1,0 +1,16 @@
+data:
+  train:
+    masks:
+      - Gleason_2019/resized_dataset_1024/Maps/STAPLE
+      - Gleason_2019/resized_dataset_1024/Maps/Maps1_T
+      - Gleason_2019/resized_dataset_1024/Maps/Maps2_T
+      - Gleason_2019/resized_dataset_1024/Maps/Maps3_T
+      - Gleason_2019/resized_dataset_1024/Maps/Maps4_T
+      - Gleason_2019/resized_dataset_1024/Maps/Maps5_T
+      - Gleason_2019/resized_dataset_1024/Maps/Maps6_T
+
+model:
+  seed: 0
+  pionono_config:
+    gold_annotators:
+      - 0
